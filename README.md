@@ -13,17 +13,18 @@
 ### Javascript
 ---
 
-· [枚举](https://github.com/7demo/Blog/blob/master/201711/enmuerable.md)
+· [枚举](/201711/enmuerable.md)
 
 ### nodejs
+---
 
-· [fs.watch与自动刷新的实现](/7demo/Blog/blob/master/201903/watchFile.md)
+· [fs.watch与自动刷新的实现](/201903/watchFile.md)
 
 
 ### lunix
 ---
 
-· [备份与回滚文件](https://github.com/7demo/Blog/blob/master/201711/copyandroll.md)
+· [备份与回滚文件](/201711/copyandroll.md)
 
 
 
