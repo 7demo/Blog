@@ -15,6 +15,10 @@
 
 · [枚举](https://github.com/7demo/Blog/blob/master/201711/enmuerable.md)
 
+### nodejs
+
+· [fs.watch与自动刷新的实现](/7demo/Blog/blob/master/201903/watchFile.md)
+
 
 ### lunix
 ---
