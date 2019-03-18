@@ -174,3 +174,132 @@ Stats {
 我们发现，主要是文件大小与修改时间发生了改变。
 
 同样，`fs.watchFile`返回值同`fs.watch`。
+
+## 自动刷新的实现
+
+记得刚开始从事这一行的时候，在解放生产力这一块，当时流行的是`F5`自动刷新——开发页面时，每次按保存，都会实现浏览器的自动刷新。这相对于每次手动刷新浏览器的的确确的提高了生产效率，尤其是对多屏幕的同学。
+
+此刻，基于我们刚刚对`fs`的学习，是不是可以自我实现自动刷新功能呢？答案是肯定的，不过需要实时通信服务的帮助。
+
+首先安装依赖`koa`、`ws`，创建目录结构：
+
+```
+|-- autoF
+	|-- index.html
+	|-- server.js
+	|-- websocket.js
+```
+`index.html`文件，主要是html页面，用于展示、链接`ws`服务器。
+```html
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Document</title>
+	</head>
+	<body>
+		<h4>auto reload</h4>
+		<script>
+			// 连接ws 服务器
+			let ws = new WebSocket(`ws://localhost:8081`);
+			ws.onopen = function(arg) {
+				console.log('已连接：', arg)
+			}
+			// 监听服务端发送的消息，实现刷新
+			ws.onmessage = function(msg) {
+				console.log('监听到消息', msg)
+				if (msg.data === 'reload') {
+					location.reload()
+				}
+			}
+			ws.onerror = function(err) {
+				console.log('err:', err)
+			}
+			ws.onclose = function (msg) {
+				console.log('断开连接: ', msg)
+			}
+		</script>
+	</body>
+	</html>
+```
+
+`server.js`，是一个基于`koa`实现的`web server`。主要用于渲染页面、引入`ws`监控页面。
+```javascript
+const Koa = require('koa')
+const ws = require('./websocket')
+const app = new Koa()
+const fs = require('fs')
+
+app.use(ws())
+
+// 所有请求都会返回index.html内容
+app.use(ctx => {
+	let file = fs.readFileSync('./index.html', 'utf-8')
+	ctx.body = file
+})
+
+app.listen(8080, '0.0.0.0')
+
+console.log('app server is running 8080!')
+```
+
+`websocket.js`，主要是实现`ws`服务与`watch`页面。
+
+```javascript
+const WebSocket = require('ws')
+const fs =  require('fs')
+// 创建ws server
+const server = new WebSocket.Server({
+  port: 8081,
+  perMessageDeflate: {
+    zlibDeflateOptions: {
+      // See zlib defaults.
+      chunkSize: 1024,
+      memLevel: 7,
+      level: 3
+    },
+    zlibInflateOptions: {
+      chunkSize: 10 * 1024
+    },
+    clientNoContextTakeover: true, // Defaults to negotiated value.
+    serverNoContextTakeover: true, // Defaults to negotiated value.
+    serverMaxWindowBits: 10, // Defaults to negotiated value.
+    concurrencyLimit: 10, // Limits zlib concurrency for perf.
+    threshold: 1024 // Size (in bytes) below which messages
+  }
+})
+
+class Server {
+  constructor(ctx, next) {
+    this.wsServer = server
+    this.ctx = ctx
+    // 如果连接成功，则执行connection函数
+    this.wsServer.on('connection', this.onConnection.bind(this))
+    next()
+  }
+  onConnection(ws) {
+    console.log('ws server is connected!')
+    // 监听文件改变
+    fs.watch('./index.html', {
+     recursive: true
+    }, (eventType, filename) => {
+      // 告诉浏览器 要刷新了~
+      this.ctx.ws.send('reload')
+    })
+  }
+}
+
+module.exports = () => {
+  return function(ctx, next) {
+    return new Server(ctx, next)
+  }
+}
+```
+
+接下来，运行`node server.js`，在浏览器访问`http://localhost:8080/`。
+
+如果我们此时编辑`index.html`页面，就会发现浏览器实现了自动刷新。
+
+当然，以上只是个`demo`，仅仅展现了实现自动刷新的原理，我们在文件注入部分还可以自动注入页面中`ws`的连接代码，还得解决下`ws`刷新可能存在的内存泄漏问题。
+
+
