@@ -1,6 +1,8 @@
-# `fs.watch`与自动刷新的实现
+# `fs.watch`与自动刷新
 
-> 无论在node开发中使用`nodemon`监视服务端文件变动，还是在前端页面开发中各种热更新（其实server中文件的变动也属于热更新）都属于对文件的监听。因此在此对其实现做些探查。
+> 在前端开发提高生产力中，文件改动后实时的更新则属于非常有用的一种，无论在node开发中使用`nodemon`监视服务端文件变动，还是在前端页面开发中各种页面自动刷新都属于这类。因此在此对文件变动的监视与自动刷新的显示做些探究。
+
+> 文件的监视则离不开`fs`的`watch`方法。
 
 ---
 
@@ -177,11 +179,11 @@ Stats {
 
 ## 自动刷新的实现
 
-记得刚开始从事这一行的时候，在解放生产力这一块，当时流行的是`F5`自动刷新——开发页面时，每次按保存，都会实现浏览器的自动刷新。这相对于每次手动刷新浏览器的的确确的提高了生产效率，尤其是对多屏幕的同学。
+记得刚开始从事这一行的时候，当时流行的是`F5`自动刷新——开发页面时，每次按保存，都会实现浏览器的自动刷新。这相对于每次手动刷新浏览器的的确确的提高了生产效率，尤其是对多屏幕的同学。
 
-此刻，基于我们刚刚对`fs`的学习，是不是可以自我实现自动刷新功能呢？答案是肯定的，不过需要实时通信服务的帮助。
+此刻，基于我们刚刚对`fs`的学习，是不是可以自我实现自动刷新功能呢？答案是肯定的，不过需要`websocket`的帮助。
 
-首先安装依赖`koa`、`ws`，创建目录结构：
+首先安装`koa`、`ws`用于创建服务器与`websocket`服务器。创建目录结构：
 
 ```
 |-- autoF
@@ -189,7 +191,7 @@ Stats {
 	|-- server.js
 	|-- websocket.js
 ```
-`index.html`文件，主要是html页面，用于展示、链接`ws`服务器。
+`index.html`文件，主要是html页面，用于展示、连接`websocket`服务器。
 ```html
 	<!DOCTYPE html>
 	<html lang="en">
@@ -301,5 +303,88 @@ module.exports = () => {
 如果我们此时编辑`index.html`页面，就会发现浏览器实现了自动刷新。
 
 当然，以上只是个`demo`，仅仅展现了实现自动刷新的原理，我们在文件注入部分还可以自动注入页面中`ws`的连接代码，还得解决下`ws`刷新可能存在的内存泄漏问题。
+
+基于以上学习，我们在`koa-views`代码的基础上，实现了一个可以实时刷新的(`koa-views`)[https://github.com/7demo/koa-liveload-views]
+
+## 基于`EventSource`的实时刷新
+
+上面代码实现的实时刷新中，浏览器页面与`server`的通信主要是基于`websocket`。`websocket`是一个浏览器与服务器的双向通信，这个对服务器的要求比较高，还需要额外配置`ws`的服务器。哪有没有更简单些的办法呢。答案肯定是有的，那就是`EventSouce`——`SSE`(server-send-event)。它与`websocket`区别的是——单向通信，在股票数据更新、新闻推送中更适用。因为这些场景不需要客户端推送信息到服务端。
+
+现在我们开看看`EeventSource`的实现。
+
+```server.js
+const Koa = require('koa')
+const app = new Koa()
+const Router = require('koa-router')
+const router = new Router()
+const Readable = require('stream').Readable
+const fs = require('fs')
+
+
+function RR() {
+	Readable.call(this, arguments)
+}
+RR.prototype = new Readable()
+RR.prototype._read = function(data) {
+}
+
+function sse(stream, event, data) {
+	return stream.push(`event:${event}\ndata:${JSON.stringify(data)}\n\n`)
+}
+
+router.get('/', (ctx, next) => {
+	let file = fs.readFileSync('./index.html', 'utf-8')
+	ctx.body = file
+})
+
+router.get('/sse', (ctx, next) => {
+	var stream = new RR()
+	ctx.set({
+		'Content-type': 'text/event-stream',
+		'Cache-Control': 'no-cache',
+		'Connection': 'keep-alive'
+	})
+	ctx.body = stream
+	fs.watch('./index.html', () => {
+		sse(stream, 'test', {a: 2})
+	})
+})
+
+app.use(router.routes())
+	.use(router.allowedMethods())
+
+app.listen(8080, '0.0.0.0')
+
+console.log('app server is running 8080!')
+
+```
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	<h4>auto reload test</h4>
+	<script>
+		var sse = new EventSource('http://localhost:8080/sse')
+		sse.addEventListener('test', (e) => {
+			console.log('evnet', e)
+			location.reload()
+		})
+		sse.addEventListener('error', (e) => {
+			console.log('error', e)
+		})
+	</script>
+</body>
+</html>
+```
+
+以上就是代码，我们在控制台运行`node server.js`后，在浏览器访问`http://localhost:8080/`。如果我们编辑`index.html`，则会发现浏览器进行了刷新。
+
+其实，这个`EventSource`也是`webpack`插件热更新实现的原理。这个与`eventSource`、`stream`则后续进行分析。
+
 
 
