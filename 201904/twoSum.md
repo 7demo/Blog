@@ -18,3 +18,27 @@
 		}
 	}
 ```
+
+以上是`leetcode`能接受的答案，以空间换时间。如果只单纯实现其实还有：
+
+```javascript
+var twoSum = function(nums, target) {
+    let run = (nums, target) => {
+        var res = nums.reduce((cur, next) => {
+            if (cur + next === target) {
+                return [cur, next]
+            } else {
+                return cur
+            }
+        })
+        if (!Array.isArray(res)) {
+           return run(nums.slice(1), target)
+        } else {
+           return res
+        }
+    }
+    const valurArr = run(nums, target)
+    return [nums.indexOf(valurArr[0]), nums.indexOf(valurArr[1])]
+};
+```
+以上，虽然已经为了避免堆栈过长，使用了“尾递归”来优化，但是还是没有被通过。
