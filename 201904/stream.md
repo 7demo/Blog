@@ -147,7 +147,7 @@ readable.on('data', (chunk) => {
 
 我们看到，在运行1s后，先后输出`a/b`。说明暂停模式下，无法读取数据，直到`resume()`。同时也说明，暂停模式下，数据是先进入缓冲中，等待读取。
 
-我们再回到之前，`push`返回值为`false`，表示推入的数据已经达到缓冲的阈值，不建议继续推入，需要等缓冲中的数据被消费后才能继续推入。
+我们再回到之前，`push`返回值为`false`，表示推入的数据已经达到缓冲的阈值，不建议继续推入，需要等缓冲中的数据被消费后才能继续推入。当然如果达到阈值后一直推送数据，消费不及的话，就会产生"背压/back-pressure"问题。
 
 在暂停模式，我们需要监听`readable`主动去调用`read()`事件获取数据。
 
@@ -209,10 +209,92 @@ util.inherits(myReadable, Readable)
 
 > `Stream.Writable`，可写流。例子有：客户端的请求、服务端的响应、`fs`的写入流...子进程的`stdin`、`process.stdout`、`process.stderr`。
 
+```javascript
+const Writable = require('stream').Writable
+const writeable = new Writable
+writeable._write = (chunk, _, next) => {
+	console.log(chunk.toString())
+	next()
+}
+writeable.write('test1')
+writeable.write('test2')
+writeable.end('!')
+writeable.on('finish', () => {
+	console.log('写入完成')
+})
+```
 
+类似`readable`必须实现一个`_read`方法，`writable`必须实现一个`_write`方法。可传三个参数，分别是写入内容、编码与回调方法。回调方法是必须，否则写入一次数据后则不能再继续写入数据。
+
+写入数据最后，需要`end`，表示写入数据结束，再继续写入则失败。
+
+同样，`writable`也有一个写入缓冲区——`highWaterMark`。用来控制写入缓冲区的大小。如果写入的数据大于缓冲区的阈值，则会返回`false`，建议不再继续写入。当缓冲区的数据消费完，会自动触发`drain`句柄，然后我们才可以继续写入。
 
 ### 背压模式/back-pressure
 
+到此，咱们可以看下怎么解决背压问题。我们这边把`readable`与`writable`连接起来，通过`drain`来控制流的读取、写入。
+
+```javascript
+const fs = require('fs')
+const Writable = require('stream').Writable
+const writable = new Writable({
+	highWaterMark: 2
+})
+let readable = fs.createReadStream('./package-lock.json', {
+	highWaterMark: 4
+})
+writable._write = (chunk, _, next) => {
+	next()
+}
+readable.on('data', (chunk) => {
+	console.log(chunk.toString())
+	if (!writable.write(chunk)) {
+		readable.pause()
+	}
+})
+writable.on('drain', () => {
+	readable.resume()
+})
+```
+可以看到，因为写入的缓冲区阈值较小，文件中的数据不是一下子全部输出的，在可读流暂停与开始间来回切换输出的。其实，这个也是`pipe`的核心代码。
+
+#### objectMode
+
+以上所有例子中，可读流与可写流都是传输的`Buffer`。我们可以把`objectMode`设置为`true`，就可以传除了`null`之外的其他js对象。
+
+#### 使用实现
+
+`es6`
+
+```javascript
+import { Writable } from stream
+class myWritable extends Writable {
+	constructor(opts) {
+		super()
+		this.opts = opts
+	}
+	_read() {
+	}
+}
+```
+
+`js`
+
+```javascript
+const Writable = require('stream').Writable
+const util = require('util')
+
+function myWritable() {
+	Writable.call(this)
+}
+
+myWritable.prototype._read = () => {
+}
+
+util.inherits(myWritable, Writable)
+```
+
+---
 
 ## 参考
 
