@@ -296,6 +296,42 @@ util.inherits(myWritable, Writable)
 
 ---
 
+## Duplex
+
+`Duplex`是一个实现了`readable`与`writable`的流。比如`tcp socket`、`zlib`、`crypto`。我们可以理解为电话，能听能说话。
+
+我们可以简单的实现一个既有`read`与`write`的双工流。
+
+```javascript
+const {Duplex} = require('stream')
+const fs = require('fs')
+let duplex = new Duplex
+
+duplex._read = () => {
+}
+
+duplex._write = (chunk) => {
+	console.log('write', chunk.toString())
+}
+
+duplex.on('data', (chunk) => {
+	console.log(chunk.toString())
+})
+
+duplex.push('test')
+duplex.write('write data')
+```
+
+我们日常所遇到的`a.pipe(b).pipe(a)`，则是一个`duplex`。
+
+---
+
+## Transform
+
+---
+
+## PassThrough
+
 ## 参考
 
 [Stream文档](http://nodejs.cn/api/stream.html#stream_stream)
