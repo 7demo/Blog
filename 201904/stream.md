@@ -147,7 +147,7 @@ readable.on('data', (chunk) => {
 
 我们看到，在运行1s后，先后输出`a/b`。说明暂停模式下，无法读取数据，直到`resume()`。同时也说明，暂停模式下，数据是先进入缓冲中，等待读取。
 
-我们再回到之前，`push`返回值为`false`表示“下一次推送数据”失败。此时需要等到数据被消费，继续调用`read`才可以继续推入数据。
+我们再回到之前，`push`返回值为`false`，表示推入的数据已经达到缓冲的阈值，不建议继续推入，需要等缓冲中的数据被消费后才能继续推入。
 
 在暂停模式，我们需要监听`readable`主动去调用`read()`事件获取数据。
 
@@ -202,6 +202,16 @@ myReadable.prototype._read = () => {
 
 util.inherits(myReadable, Readable)
 ```
+
+---
+
+## Writable
+
+> `Stream.Writable`，可写流。例子有：客户端的请求、服务端的响应、`fs`的写入流...子进程的`stdin`、`process.stdout`、`process.stderr`。
+
+
+
+### 背压模式/back-pressure
 
 
 ## 参考
