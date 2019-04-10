@@ -328,9 +328,94 @@ duplex.write('write data')
 
 ## Transform
 
----
+`duplex`是一个既可读又可写的流，但是内部缓冲没有进行关联。进行关联的是`transform`。我们先可以实现一个先写后读的例子：
 
-## PassThrough
+```javascript
+const {Transform} = require('stream')
+let transform = new Transform
+
+transform._transform = (chunk, _, next) => {
+	next(null, chunk.toString())
+}
+
+transform.pipe(process.stdout)
+
+transform.write('a')
+transform.end('b')
+```
+
+这里我们写入的字符串在`transfrom`方法处理后直接输出。也可以这样写：
+
+```javascript
+const {Transform} = require('stream')
+let transform = new Transform
+
+transform._transform = (chunk, _, next) => {
+	console.log('-->', chunk.toString())
+	transform.push(chunk.toString())
+	next()
+}
+
+transform.pipe(process.stdout)
+
+transform.write('a')
+transform.write('b')
+transform.write('c')
+transform.write('d')
+transform.end('f')
+```
+
+我们发现控制台输出是：
+
+```bash
+--> a
+a--> b
+b--> c
+c--> d
+d--> f
+f%
+```
+
+可以明显看出，是一个写入-输出-写入-输出的顺序。那我们用`duplex`也试试呢？
+
+```javascript
+const {Duplex} = require('stream')
+let duplex = new Duplex
+
+duplex._read = () => {
+}
+duplex._write = (chunk, _, next) => {
+	console.log('--->write', chunk.toString())
+	duplex.push(chunk.toString())
+	next()
+}
+
+duplex.pipe(process.stdout)
+duplex.write('a')
+duplex.write('b')
+duplex.write('c')
+duplex.write('d')
+duplex.write('e')
+duplex.end('f')
+```
+
+输出的为：
+
+```bash
+--->write a
+--->write b
+--->write c
+--->write d
+--->write e
+--->write f
+abcdef%
+```
+
+是全部写入后才进行的输出，证明了`transform`是共享内存的，`duplex`则没有。
+
+`transfrom`可以监听`flush`来判断是否写入端数据已完成。
+
+
 
 ## 参考
 
