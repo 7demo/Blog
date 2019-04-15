@@ -18,6 +18,8 @@ const bf = Buffer.from(arr)
 console.log(bf.values())
 ```
 
+此外，还有比较`Buffer.compare`、合并`Buffer.concat`
+
 ---
 
 Buffer.allocUnsafe 创建未初始化的固定大小的内存。速度比alloc快，但是不安全。因为可能有旧数据，解决办法：重写覆盖fill桌write
