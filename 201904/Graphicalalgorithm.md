@@ -148,9 +148,9 @@ function factorial(n, m = 1) {
 	if (n == 1) {
 		return m
 	} else {
-		return function() {
-			return factorial(n - 1, n + m)
-		}
+		return factorial.bind(null, n - 1, n + m)
 	}
 }
 ```
+
+我们执行`jump(factorial(1000))`
