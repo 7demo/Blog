@@ -133,5 +133,24 @@ function factorial(n) {
 或者使用`蹦床函数`:
 
 ```JavaScript
+function jump(f) {
+	while (f && f instanceof Function) {
+		f = f()
+	}
+	return f
+}
+```
 
+检测参数是一个函数的话，则持续执行。这样，我们的递归函数也要变一下：
+
+```javascript
+function factorial(n, m = 1) {
+	if (n == 1) {
+		return m
+	} else {
+		return function() {
+			return factorial(n - 1, n + m)
+		}
+	}
+}
 ```
