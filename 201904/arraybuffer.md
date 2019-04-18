@@ -139,7 +139,7 @@ byteLength: 4
 __proto__: ArrayBuffer
 ```
 
-那根据之前把`arraybuffer`转字符串的方法，我们可以这样写：
+那根据之前把`arraybuffer`转字符串的方法，我们可以这样写（`Buffer`的实例是`Uint8Array`的实例）：
 
 ```javascript
 function ab2str(buffer) {
