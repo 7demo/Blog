@@ -14,7 +14,7 @@
 
 ## ArrayBuffer
 
-代表内存中的二进制数据，可以通过“视图”部署数组的接口进行操作。它不能直接读写数据，必须通过`TypedArray`、`DataView`来生成读写。
+代表内存中（栈中，比堆中的数组更快）的二进制数据，可以通过“视图”部署数组的接口进行操作。它不能直接读写数据，必须通过`TypedArray`、`DataView`来生成读写。
 
 视图就是解读数据的方式。
 
@@ -26,9 +26,23 @@
 
 `TypedArray`可以接受三个参数，分别为`ArrayBuffer`、开始字节位置、结束字节位置。
 
+`TypedArray`也可以接受参数为一个数字，直接初始化内存。
+
+`TypedArray`可以以另外一个`TypedArray`作为参数，开辟新内存后复制了值。
+
+`TypedArray`可以以`ArraylikeObj`作为参数，开辟新内存后复制了值。
+
+`TypedArray.buffer`是获取`ArrayBuffer`对象。`TypedArray.byteLength`返回的是字节长度，而`TypeArray.length`返回的成员长度。
+
+```javascript
+var buffer = new ArrayBuffer(8)
+var vb = new Uint16Array(buffer)
+console.log(vb.length, vb.byteLength) // 4, 8 由于Uint16Array每个成员占用字节数是2，所以成员长度为4.
+```
+
 ## DataView
 
-也用于生成内存的视图——不确定格式的二进制数据。比如：`Unit8`、`Init16`、`Float32`。
+也用于生成内存的视图——不确定格式的二进制数据（可以区分大小字端序）。比如：`Unit8`、`Init16`、`Float32`。
 
 
 ```javascript
@@ -65,3 +79,88 @@ console.log(x1, x1[0])
 `buf.slice(0, n)`可以拷贝原对象。
 
 `ArrayBuffer.isView(buf)`来判断是否为一个视图的实例。
+
+### 字符串与`arraybuffer`互相转换
+
+字符串转`arraybuffer`:
+
+```javascript
+function str2ab(str) {
+	// 一个字符串占用两个字节
+	var buffer = new ArrayBuffer(str.length * 2)
+	var bv = new Uint16Array(buffer)
+	for (let i = 0; i < str.length; i++) {
+		bv[i] = str.charCodeAt(i)
+	}
+	return buffer
+}
+```
+
+`arraybuffer`转字符串
+
+```javascript
+function ab2str(buffer) {
+	return String.fromCharCode.apply(null, new Uint16Array(buffer)) // 必须知道编码格式，js内部为utf-16
+}
+```
+
+### 应用
+
+在`XMLHttpRequest`第二版本中，支持了二进制数据的返回。首先在服务端创建一个路由，返回`buffer`。
+
+```javascript
+router.post('/buffer', (ctx, next) => {
+	let buffer = Buffer.from('abcd')
+	ctx.body = buffer
+})
+```
+
+在页面上，我们使用`axios`：
+
+```javascript
+axios({
+	url: '/buffer',
+	method: 'POST',
+	responseType: 'arraybuffer'
+}).then((res) => {
+	console.log(res.data)
+})
+```
+
+可以看到，输出为：
+
+```javascript
+ArrayBuffer(4) {}
+[[Int8Array]]: Int8Array(4) [97, 98, 99, 100]
+[[Int16Array]]: Int16Array(2) [25185, 25699]
+[[Int32Array]]: Int32Array [1684234849]
+[[Uint8Array]]: Uint8Array(4) [97, 98, 99, 100]
+byteLength: 4
+__proto__: ArrayBuffer
+```
+
+那根据之前把`arraybuffer`转字符串的方法，我们可以这样写：
+
+```javascript
+function ab2str(buffer) {
+	return String.fromCharCode.apply(null, new Uint8Array(buffer))
+}
+ab2str(res.data) // abcd
+```
+
+此外，常见的应用场景：
+
+· 当`websocket`设置`ws.binaryType=arrayBuffer`，也是通过二进制进行传输。
+
+· 文件的读取——`FILE API`。
+
+```
+let file = document.querySelector('#input')
+let reader = new FileReader()
+reader.readAsArrayBuffer(file.files[0])
+reader.onload = () => {
+	console.log(reader.result)
+}
+```
+
+· 浏览器中，主窗口与不同`work`通信时可以使用`SharedArrayBuffer`。与`ArrayBuffer`区别在于可共享。
