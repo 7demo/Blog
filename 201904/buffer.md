@@ -60,3 +60,123 @@ console.log(buffer)
 `buffer.constants.MAX_LENGTH`返回单个内存实例允许的最大内存
 
 `buffer.constants.MAX_STRING_LENGTH`返回单个内存示例允许最大长度
+
+---
+
+### 应用
+
+#### `buffer`的拼接
+
+`buffer`提供了一个方法是`buffer.concat`，专门用于合并`buffer`。接受两个参数，第一个参数为`buffer`的数组，第二个参数是合并后`buffer`的长度，如果长度没有设置，则会默认去数组中每个`buffer`的长度和。
+
+```javascript
+const bf1 = Buffer.alloc(2)
+const bf2 = Buffer.alloc(3)
+const bf3 = Buffer.alloc(4)
+bf1[0] = 1
+bf1[1] = 1
+bf2[0] = 2
+bf2[1] = 2
+bf2[2] = 2
+bf3[0] = 3
+bf3[1] = 4
+bf3[2] = 4
+bf3[3] = 4
+const bf4 = Buffer.concat([bf1, bf2, bf3])
+console.log(bf4.length, bf4) // 9 <Buffer 01 01 02 02 02 03 04 04 04>
+
+const bf1 = Buffer.from('111')
+const bf2 = Buffer.from('2222')
+const bf3 = Buffer.from('33333')
+const bf4 = Buffer.concat([bf1, bf2, bf3])
+console.log(bf4.length, bf4.toString()) // 12 '111222233333'
+
+```
+
+#### `buffer`存储与传输
+
+在常用的http请求中，其实都是`buffer`在传输，由`buffer`组成`stream`。所以理论上，我们把字符串或者json对象转成`buffer`会更快。但是由于字符串的处理远比`buffer`快，所以该用字符串的地方还是需要使用字符串。
+
+```javascript
+var time = 300*1000;
+var txt = "aaa"
+
+var str = "";
+console.time('test5')
+for(var i=0;i<time;i++){
+    str += txt;
+}
+console.timeEnd('test5') // test5: 25.329ms
+
+var time = 300*1000;
+var txt = "aaa"
+var bf = Buffer.from(txt)
+console.time('testb')
+for(var i=0;i<time;i++){
+    bf = Buffer.concat([bf, Buffer.from(txt)], bf.length + 3)
+}
+console.timeEnd('testb') // testb: 53432.812ms
+
+var time = 300*1000;
+var txt = "aaa"
+var bf = Buffer.alloc(time * txt.length)
+var offset = 0
+console.time('testb')
+for(var i=0;i<time;i++){
+    bf.write(txt, offset)
+    offset += txt.length
+}
+console.timeEnd('testb') // testb: 40.887ms
+```
+
+由于`buffer`是在堆外内存中，也适合大对象的存储。
+
+
+#### `buffer`的大转小
+
+
+一般来说`gbk模式`下，一个字符占据两个字节，每个字节是8byte；`utf-8`模式下，中文是3个字节，数字与英文是一个字节。js中一个一般是unicode编码模式。utf8下，时间戳`1556033783480`的字节长度为13，如果我们用`buffer`来保存呢。
+
+这得知道`Buffer`的实例就是`Uint8Array`的实例。
+
+```javascript
+var s = 1556033783480
+var bf = Buffer.alloc(6)
+bf.writeUIntBE(s, 0, 6)
+console.log(bf.length, bf.byteLength) // 6，6
+console.log(bf.readUIntBE(0, 6)) // 1556033783480
+```
+
+这里`Buffer.writeUIntBE`是`buffer`的写入方法。接受三个参数，分别是值、开始地址与偏移量。其中偏移量是大于0小于6(单位字节)。由于每个字节是`8byte`，那么最大它最大考验表示`2^(6*8) - 1`的值，即`281474976710655`。
+
+我们把值设置成`281474976710655`看看：
+
+```javascript
+var s = 281474976710655
+var bf = Buffer.alloc(6)
+bf.writeUIntBE(s, 0, 6)
+console.log(bf.length, bf.byteLength) // 6，6
+console.log(bf.readUIntBE(0, 6)) // 281474976710655
+```
+
+如果我们把值设置成`281474976710657`
+
+```javascript
+var s = 281474976710657
+var bf = Buffer.alloc(6)
+bf.writeUIntBE(s, 0, 6)
+console.log(bf.length, bf.byteLength) // 6，6
+console.log(bf.readUIntBE(0, 6)) // 1
+```
+
+由于这个值已经越界，最后读出的值为`1`。
+
+基于以上的理解，我们在存储一些数值的时候，可以使用`buffer`来存储。
+
+---
+
+file api 上传图片到server
+
+gbk->utf-8
+
+乱码的解决方式
