@@ -237,5 +237,3 @@ var bf1 = bf.slice(0, 5)
 console.log(decoder.write(bf1)) // 5 '你'
 ```
 
-#### 文件上传
-
