@@ -11,6 +11,15 @@ console.log(bf.buffer) // ArrayBuffer { byteLength: 1 }
 
 > 在下载文件时，服务端返回的数据，可以很容易找到`Unit8Array`对象。
 
+```javascript
+axios({
+	url: '/buffer',
+	method: 'POST',
+	responseType: 'arraybuffer'
+}).then((res) => {
+	console.log(res.data)
+})
+```
 
 在使用`Buffer.from`、`Buffer.alloc`与`Buffer.allocUnsafe`传参为字符串、数组与`Buffer`时，则会进行一个深拷贝。如果给的是`ArrayBuffer`、`SharedArrayBuffer`则是同一个地址的引用。
 
