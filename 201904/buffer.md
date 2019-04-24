@@ -2,7 +2,15 @@
 
 > `Buffer`是`nodejs`中已经内置的处理二进制的模块。`Buffer`中文就是缓冲的意思，对，就是之前`stream`中的缓冲。一个很经常看到例子的就是视频等待缓冲后才能播放。
 
-在`nodejs`中，`buffer`属于在`V8`堆外部内存创建的固定大小的内存。`Buffer`的实例也是`Uint8Array`的实例。
+在`nodejs`中，`buffer`属于在`V8`堆外部内存创建的固定大小的内存。`Buffer`的实例也是`Uint8Array`的实例。可以通过下个例子来窥视下。
+
+```javascript
+var bf = Buffer.alloc(1)
+console.log(bf.buffer) // ArrayBuffer { byteLength: 1 }
+```
+
+> 在下载文件时，服务端返回的数据，可以很容易找到`Unit8Array`对象。
+
 
 在使用`Buffer.from`、`Buffer.alloc`与`Buffer.allocUnsafe`传参为字符串、数组与`Buffer`时，则会进行一个深拷贝。如果给的是`ArrayBuffer`、`SharedArrayBuffer`则是同一个地址的引用。
 
@@ -10,7 +18,7 @@
 
 > Buffer.allocUnsafe 创建未初始化的固定大小的内存。速度比alloc快，但是不安全。因为可能有旧数据，解决办法：重写覆盖fill
 
-运行`node  --zero-fill-buffers`时创建的`Buffer`直接用`0`填充。
+> 运行`node  --zero-fill-buffers`时创建的`Buffer`直接用`0`填充。
 
 ### 创建
 
@@ -135,7 +143,7 @@ console.timeEnd('testb') // testb: 40.887ms
 #### `buffer`的大转小
 
 
-一般来说`gbk模式`下，一个字符占据两个字节，每个字节是8byte；`utf-8`模式下，中文是3个字节，数字与英文是一个字节。js中一个一般是unicode编码模式。utf8下，时间戳`1556033783480`的字节长度为13，如果我们用`buffer`来保存呢。
+一般来说`gbk模式`下，一个字符占据两个字节，每个字节是8位；`utf-8`模式下，中文是3个字节，数字与英文是一个字节。js中一个一般是unicode编码模式。utf8下，时间戳`1556033783480`的字节长度为13，如果我们用`buffer`来保存呢。
 
 这得知道`Buffer`的实例就是`Uint8Array`的实例。
 
@@ -147,7 +155,7 @@ console.log(bf.length, bf.byteLength) // 6，6
 console.log(bf.readUIntBE(0, 6)) // 1556033783480
 ```
 
-这里`Buffer.writeUIntBE`是`buffer`的写入方法。接受三个参数，分别是值、开始地址与偏移量。其中偏移量是大于0小于6(单位字节)。由于每个字节是`8byte`，那么最大它最大考验表示`2^(6*8) - 1`的值，即`281474976710655`。
+这里`Buffer.writeUIntBE`是`buffer`的写入方法。接受三个参数，分别是值、开始地址与偏移量。其中偏移量是大于0小于6(单位字节)。由于每个字节是`8位`，那么最大它最大考验表示`2^(6*8) - 1`的值，即`281474976710655`。
 
 我们把值设置成`281474976710655`看看：
 
@@ -173,10 +181,52 @@ console.log(bf.readUIntBE(0, 6)) // 1
 
 基于以上的理解，我们在存储一些数值的时候，可以使用`buffer`来存储。
 
----
 
-file api 上传图片到server
+#### 转码
 
-gbk->utf-8
+`Buffer`与js字符串间需要显式的调用编码方法，包含以下几种：
 
-乱码的解决方式
+· `ascii`
+
+· `utf-8`
+
+· `ucs2`
+
+· `base64`
+
+· `binary`（已废弃）
+
+```javascript
+var bf = Buffer.from('abc', 'utf-8')
+console.log(bf.toString()) // abc
+console.log(bf.toString('utf-8')) // abc
+console.log(bf.toString('base64')) // YWJj
+console.log(bf.toString('hex')) // 616263
+```
+
+我们可以使用`iconv-lite`来识别编码格式，甚至`gbk`转`utf-8`——识别编码格式，应该是根据`buffer`的索引为0、1的值来判断。
+
+#### 乱码
+
+乱码究其原因是汉字被不完整读取。比如汉字`utf-8`下占用3字节，如果我们从1或者2的位置读取就会出现。
+
+```javascript
+var bf = Buffer.from('你好，今天')
+console.log(bf.byteLength, bf.toString()) // 15 你好，今天
+var bf1 = bf.slice(0, 5)
+console.log(bf1.byteLength, bf1.toString()) // 5 '你�'
+```
+
+在这种情况下，我们可以使用`string_decoder`模块来解码。
+
+```javascript
+var {StringDecoder} = require('string_decoder')
+const decoder = new StringDecoder('utf8')
+var bf = Buffer.from('你好，今天')
+console.log(bf.byteLength, bf.toString()) // 15 你好，今天
+var bf1 = bf.slice(0, 5)
+console.log(decoder.write(bf1)) // 5 '你'
+```
+
+#### 文件上传
+
