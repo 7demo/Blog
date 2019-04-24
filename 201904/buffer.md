@@ -239,12 +239,12 @@ console.log(decoder.write(bf1)) // 5 '你'
 
 参考：
 
-·(buffer官方文档)[http://nodejs.cn/api/buffer.html]
+·[buffer官方文档](http://nodejs.cn/api/buffer.html)
 
-·(深入学习 Node.js Buffer)[https://semlinker.com/node-buffer/]
+·[深入学习 Node.js Buffer](https://semlinker.com/node-buffer/)
 
-·(Node.js 的 Buffer 那些你可能不知道的用法)[https://morning.work/page/2015-11/nodejs_buffer.html]
+·[Node.js 的 Buffer 那些你可能不知道的用法](https://morning.work/page/2015-11/nodejs_buffer.html)
 
-·(【深入浅出Node.js系列六】Buffer那些事儿)[https://my.oschina.net/xianggao/blog/600726]
+·[【深入浅出Node.js系列六】Buffer那些事儿](https://my.oschina.net/xianggao/blog/600726)
 
-·(node编码中的坑)[https://juejin.im/post/5ace1a52f265da239e4e71ac]
+·[node编码中的坑](https://juejin.im/post/5ace1a52f265da239e4e71ac)
