@@ -78,8 +78,35 @@ subp.stdout.pipe(process.stdout)
 	// 监听子进程中的输出
 	subp.stdout.pipe(process.stdout)
 	```
-	
+
 	执行`node index.js`。此时输出的就是父进程中往子进程中写入都的数据。
+
+	- stdio
+
+	如果设置为`stdio`，则子进程的fd将会忽略，则上述例子中的`subp`则的`stdout/stdin/stderr`属性都为`null`而不是一个流对象。
+
+	```bash
+	ChildProcess {
+	  _events: [Object: null prototype] {},
+	  _eventsCount: 0,
+	  _maxListeners: undefined,
+	  _closesNeeded: 1,
+	  _closesGot: 0,
+	  connected: false,
+	  signalCode: null,
+	  exitCode: null,
+	  killed: false,
+	  spawnfile: 'node',
+	  _handle:
+	   Process { onexit: [Function], pid: 14407, [Symbol(owner)]: [Circular] },
+	  spawnargs: [ 'node', 'subprocess.js' ],
+	  pid: 14407,
+	  stdin: null,
+	  stdout: null,
+	  stderr: null,
+	  stdio: [ null, null, null ]
+	}
+	```
 
 })
 
