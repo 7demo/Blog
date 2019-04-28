@@ -108,6 +108,88 @@ subp.stdout.pipe(process.stdout)
 	}
 	```
 
+	- inherit
+
+	表示子进程的`stderr/stdin/stdout`直接指向父进程`process`的`stderr/stdin/stdout`。
+
+	```javascript
+	// process
+	let {spawn} = require('child_process')
+	let subp = spawn('node', ['subprocess.js'], {
+		stdio: 'inherit'
+	})
+	process.stdin.write('process')
+
+	//subprocess.js
+	console.log('subprocess')
+	process.stdin.on('data', (chunk) => {
+		console.log(chunk)
+	})
+	```
+
+	运行，控制台直接输出子进程的打印值`process subprocess`。
+
+	- stream
+
+	传入流对象。`stdin`除了`process.stdin`都报错。待学习。`stdout`需要可写流触发`open`事件后（异步亦可）执行`swapn`或者是使用已经指定`fd`的可写流（因为不再有fd事件）。
+
+	```javascript
+	let {spawn} = require('child_process')
+	let fs = require('fs')
+	let out = fs.createWriteStream('out.log')
+	// setTimeout(() => {
+	// 	let subp = spawn('node', ['subprocess.js'], {
+	// 		stdio: [process.stdin, out, 'pipe']
+	// 	})
+	// }, 0)
+	out.once('open', () => {
+		spawn('node', ['subprocess.js'], {
+			stdio: [process.stdin, out, 'pipe']
+		})
+	})
+
+	// 或者可写流直接指定fd
+	let fd = fs.openSync('out.log', 'w') // 此时获取fd必须同步行为
+	let out = fs.createWriteStream('out.log', {
+		flags: 'a',
+		fd: fd
+	})
+	spawn('node', ['subprocess.js'], {
+		stdio: ['pipe', out, 'pipe']
+	})
+	```
+
+	- 正整数。类似`stream`。
+
+	```javascript
+	let fd = fs.openSync('out.log', 'w') // 此时获取fd必须同步行为
+	spawn('node', ['subprocess.js'], {
+		stdio: ['pipe', out, 'pipe']
+	})
+	```
+
+	- null/undefiled
+
+	使用默认值。
+
+	- ipc
+
+	在父子进程间创建ipc通道。
+
+	```javascript
+	let {spawn} = require('child_process')
+	spawn('node', ['subprocess.js'], {
+		stdio: ['ipc']
+	}).on('message', (data) => {
+		console.log(data)
+	})
+	// subprocess.js
+	console.log(1122)
+	process.send('msg')
+	```
+
+	输出`msg`。也就是只能通过`send/on`来接受发送消息。
+
 })
 
 `spawn`创建异步进程，不阻塞事件循环。`spawnSync`创建同步进程，会阻塞事件循环。
