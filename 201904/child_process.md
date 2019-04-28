@@ -192,6 +192,36 @@ subp.stdout.pipe(process.stdout)
 
 })
 
++ detached
+
+	在window上，`detached：true`会父进程退出后子进程继续运行。子进程有自己的控制台窗口。
+
+	非window上，`detached: true`会让子进程成为新的进程与会话的领导者。子进程在父进程退出后可以继续运行。
+
+	默认情况下，父进程需要等待子进程退出。所以在`detached: true`为时，可以调用`subprocess.unref()`
+
+	```javascript
+	let {spawn} = require('child_process')
+	let fs = require('fs')
+	let out = fs.openSync('out.log', 'a')
+	let prc = spawn('node', ['subprocess.js'], {
+		detached: true,
+		stdio: ['ignore', out, 'ignore']
+	})
+	prc.unref()
+
+	// subprocess.js
+	setInterval(() => {
+		console.log(11111)
+	}, 2000)
+	```
+
+	我们可以看到，控制台直接处于退出状态，并且`out.log`一直处于增加状态。
+
++ shell
+
+	设置为`true`，则是在shell中运行。unix中默认是`/bin/sh`。
+
 `spawn`创建异步进程，不阻塞事件循环。`spawnSync`创建同步进程，会阻塞事件循环。
 
 ```javascript
