@@ -310,6 +310,28 @@ grep.stdout.pipe(process.stdout)
 
 + killSignal
 
+	默认值为`SIGTERM`。其他值还可以为`SIGINT`、`SIGKILL`、`SIGTOP`。
+
+	`SIGINT`可以由`ctrl+c`触发，只能结束前台进程。信号值是2.
+
+	`SIGTERM`可以被忽略、处理与阻塞。信号值是15.
+
+	`SIGKILL`强制终止程序。信号值是9.
+
+	`SIGTOP`与`ctrl+d`触发。是挂起。信号值是20.
+
+	```javascript
+	exec('node subprocess.js', {
+		killSignal: 'SIGINT',
+		timeout: 1200
+	}, (error, out, er) => {
+		console.log(error, out, er)
+	})
+	//
+	process.on('SIGINT', () => {
+		process.exit()
+	})
+	```
 
 ```javascript
 // window
@@ -319,8 +341,6 @@ spawn('"my script.cmd"', ['a', 'b'], { shell: true })
 exec('my.bat')
 exec('"my script.cmd" a b')
 ```
-
-`exec`与`execFile`接受一个回调，有三个参数`error`/`stdout`/`stderr`
 
 ```javascript
 const {spawn, execFile} = require('child_process')
