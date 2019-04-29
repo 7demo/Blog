@@ -241,11 +241,75 @@ grep.stdout.pipe(process.stdout)
 ```
 
 
-`child_process`的其他方法都是基于`spawn`与`spawnSync`创建
+`child_process`的其他方法都是基于`spawn`与`spawnSync`创建。
 
 ## `exec`与`execFile`
 
 `exec`与`execFile`的区别主要是平台的区别。在类`unix`上，使用`execFile`,默认不衍生`shell`。在window平台，由于`.bat`与`cmd.exe`需要使用终端才能运行，需要使用`spawn`与`excel`。
+
+###exec语法
+
+第一个是执行命令，第二个参数是`options`，第三个参数是回调，接受`error/stdout/stderr`。我们主要看`options`。
+
++ encoding
+
+	编码格式，默认是`utf-8`。
+
+	```javascript
+	exec('ls -a', {
+		encoding: 'buffer'
+	}, (err, ot) => {
+		console.log(ot)
+	})
+	```
+
++ timeout
+
+	超时时间，单位为好眠。如果值大于0时，子进程运行时间大于这个时间，则父进程会给子进程传递带`killSignal`属性的信号，结束进程。
+
+	```javascript
+	let {exec} = require('child_process')
+	exec('node subprocess.js', {
+		timeout: 1200
+	}, (error, out) => {
+		console.log(error, out)
+	})
+	// 子进程是一个setinterval函数。
+	// 1200ms后输出：
+	{ Error: Command failed: node subprocess.js
+	    at ChildProcess.exithandler (child_process.js:294:12)
+	    at ChildProcess.emit (events.js:182:13)
+	    at maybeClose (internal/child_process.js:962:16)
+	    at Process.ChildProcess._handle.onexit (internal/child_process.js:251:5)
+	  killed: true,
+	  code: null,
+	  signal: 'SIGTERM',
+	  cmd: 'node subprocess.js' }
+	```
+
++ maxBuffer
+
+	`stdout/stderr`上最大的字节数，默认200*1024。超过则停止。
+
+	```javascript
+	let {exec} = require('child_process')
+	exec('ls -a', {
+		maxBuffer: 1
+	}, (error, out) => {
+		console.log(error, out)
+	})
+	// 输出
+	{ RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: stdout maxBuffer length exceeded
+    at Socket.onChildStdout (child_process.js:348:14)
+    at Socket.emit (events.js:182:13)
+    at addChunk (_stream_readable.js:283:12)
+    at readableAddChunk (_stream_readable.js:260:13)
+    at Socket.Readable.push (_stream_readable.js:219:10)
+    at Pipe.onStreamRead (internal/stream_base_commons.js:94:17) cmd: 'ls -a' } ''
+	```
+
++ killSignal
+
 
 ```javascript
 // window
