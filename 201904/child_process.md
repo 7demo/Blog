@@ -190,7 +190,6 @@ subp.stdout.pipe(process.stdout)
 
 	输出`msg`。也就是只能通过`send/on`来接受发送消息。
 
-})
 
 + detached
 
@@ -247,7 +246,7 @@ grep.stdout.pipe(process.stdout)
 
 `exec`与`execFile`的区别主要是平台的区别。在类`unix`上，使用`execFile`,默认不衍生`shell`。在window平台，由于`.bat`与`cmd.exe`需要使用终端才能运行，需要使用`spawn`与`excel`。
 
-###exec语法
+### exec语法
 
 第一个是执行命令，第二个参数是`options`，第三个参数是回调，接受`error/stdout/stderr`。我们主要看`options`。
 
