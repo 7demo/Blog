@@ -355,5 +355,76 @@ execPromise('node', ['--version'], {
 
 ## `fork`
 
-`fork`是`spawn`的一个特例，专门用于生成进程。返回的`childProcess`会额外有一个通信通道，在父子进程间进行通信。
+`fork`是`spawn`的一个特例，专门用于生成进程。返回的`childProcess`会额外有一个通信通道，在父子进程间进行通信。根据之前`stdio`的配置，则其中须有一个值为`ipc`。每个进程都有自己的内存，会占用资源。
 
+```javascript
+let {fork} = require('child_process')
+let child = fork('subprocess.js', {
+})
+// subprocess.js
+setInterval(() => {
+	console.log(11111)
+}, 1000)
+```
+
+执行后，子进程不断输出内容。但是如果父进程crash，子进程则会一直输出成为一个孤儿进程。
+
+```javascript
+let {fork} = require('child_process')
+let child = fork('subprocess.js', {
+})
+child.stdout.pipe(process.stdout) // 会报错。
+// subprocess.js
+setInterval(() => {
+	console.log(11111)
+}, 1000)
+```
+
+
+### 语法
+
+	+ slient
+
+	默认为false。表示继承父进程的`stdin/stdout/stderr`。为`true`时，表示`stdin/stdout/stderr`会输送到父进程。
+
+	```javascript
+	let {fork} = require('child_process')
+	let child = fork('subprocess.js', {
+		silent: true
+	})
+	child.stdout.pipe(process.stdout)
+	```
+
+	+ execArgv
+
+	默认值`process.execArgv`。可执行文件的字符串参数列表。
+
+	+ execPath
+
+	用于创建子进程的可执行文件。
+
+## child_process 事件
+
++ close
+
+子进程`stdio`关闭时触发。与`exit`区别是，多进程可共享同一`stdio`。
+
++ disconnect
+
+由`subprocess.disconnect()`与`process.connect()`。端口后`process.connected`的值为`false`。
+
++ error
+
+可以由”无法衍生、无法杀死、向子进程发送消息失败“会触发。触发`error`后，`exit`可能不再触发。
+
++ subprocess.channel
+
+IPC通道的引用。
+
++ subprocess.killed
+
+是否接收到`kill`信号，但是不一定表示进程已结束。
+
++ subprocess.send
+
+父子进程间创立通信通道时，发送消息使用。消息内容不能为：`{cmd: NODE_xxx}`，因为是node核心代码使用。发送消息失败会返回`false`。
