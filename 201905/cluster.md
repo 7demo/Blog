@@ -48,7 +48,7 @@ work.on('exit', (code, signal) => {
 // 1111 null 'SIGTERM'
 ```
 
-此外，还有其他`on`可以监听的句柄：`listening/online`
+此外，还有其他`on`可以监听的句柄：`listening/online/fork`
 
 ## message
 
@@ -142,4 +142,30 @@ work.on('disconnect', () => {
 
 也看出，`disconnect`事件是在`exit`事件之前触发。
 
-## 
+## setupMaster
+
+修改默认`fork`行为，只影响之后的`fork`操作。只能由主进程调用。
+
+```javascript
+cluster.setupMaster({
+  exec: 'worker.js',
+  args: ['--use', 'https'],
+  silent: true
+});
+```
+
+
+## 问题
+
+### fork出来进程为什么没有报端口占用
+
+`master`进程正常监听端口。`worker`进程只创建服务，不监听端口。靠父子间的进程`ipc`通信。主进程收到请求后会发送`newConn`消息告诉子进程。
+
+### 怎么区分`master`与`work`
+
+`work`进程都会有一个索引编号`NODE_UNIQUE_ID`。有次值则为`work`进程，否则为`master`。
+
+### 主进程何时创建的
+
+`cluster.isMaster`时服务代码全部在子进程代码部分。是由`http.createServer.listen`时创建好`server`传递给主进程的。
+
