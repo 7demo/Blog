@@ -24,7 +24,7 @@
 + [Buffer](/201904/buffer.md)
 + [child_process](/201904/child_process.md)
 + [cluster](/201905/cluster.md)
-- [进程守护](/201905/demaon.md)
++ [进程守护](/201905/demaon.md)
 - [pm2源码分析](/201905/pm2.md)
 
 
