@@ -154,3 +154,26 @@ function factorial(n, m = 1) {
 ```
 
 我们执行`jump(factorial(1000))`
+
+## 快速排序
+
+从数组中随意找一基准值，大于此基准值的放到左数组，大于基准值的放到右数组。
+
+```javascript
+let quickSort = (array) => {
+	if (!array || array.length < 2) {
+		return array
+	}
+	let index = Math.floor(array.length / 2)
+	let left = []
+	let right = []
+	for (let i = 0; i < array.length; i++) {
+		if (array[i] < array[index]) {
+			left.push(array[i])
+		} else if (array[i] > array[index]) {
+			right.push(array[i])
+		}
+	}
+	return quickSort(left).concat([array[index]], quickSort(right))
+}
+```
