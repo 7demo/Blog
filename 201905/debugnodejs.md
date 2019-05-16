@@ -6,7 +6,7 @@
 
 `perf`是`Linux Kernal`自带性能分析工具。能进行函数级与指令级的热点查找。centos系统直接`yum install -y perf`进行安装。
 
-我们node运行`node --perf_basic_prof app.js`，会在`/tmp/`下生产一个`perf-#{id}.map`的文件。
+我们node运行`node --perf_basic_prof app.js &`(加&会进入后台运行)，会在`/tmp/`下生产一个`perf-#{id}.map`的文件。
 
 ```bash
 e3a46ee95b2 22 LazyCompile:~listenerCount events.js:489
