@@ -42,6 +42,7 @@
 + [add Two Numbers](/201904/addTwoNumbers.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
++ [Jump Game 2](/201905/JumpGame2.md)
 
 ### 读书笔记
 ---
