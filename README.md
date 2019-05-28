@@ -44,7 +44,8 @@
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
 + [Median of two sort array](/201905/medianoftwosortarray.md)
-+ [topk](/201905/topk.md)
++ [top k](/201905/topk.md)
++ [qiuck select](/201905/qiuckselect.md)
 
 ### 读书笔记
 ---
