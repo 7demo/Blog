@@ -43,6 +43,8 @@
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
++ [Median of two sort array](/201905/medianoftwosortarray.md)
++ [topk](/201905/topk.md)
 
 ### 读书笔记
 ---
