@@ -8,10 +8,64 @@
 
 > 时间复杂度为 O(log (m + n))，也是`leetcode`要求的。一看要求的时间复杂度，就应该想到二分法。
 
+- 两个数组区分长度，a小,b大。
+
+- a中二分取中间值，比较此值与b的中间值大小。小于的话，去掉a中取消a至开始与b中结束值往前推中间值-开始值。
+
+
 
 ```javascript
-// 求两个数组的中位数——即，这个数字前后的个数相等。
-// 思路：可以两个数组为一个数组或者整体。则找第k个数，为中位数（如果整体的长度为偶数，则k=第(m+n)/2 - 1与(m+n)/2 的和再除以2， 如果整体长度为奇数，则k为(m + n - 1)/2。
-// 上句话理解为，整体必存在一个第k数。由于是整体存在k数，可以理解为在m数组中存在一个第j个数，在n数组中存在第i个数，使 k = j + i
+var findMidInOddArray = function(a, b) {
+    let begain_a = 0
+    let begain_b = 0
+    let end_a = a.length - 1
+    let end_b = b.length -1
+    function get(a, begain_a, end_a, b, begain_b, end_b) {
+    	// 终止条件
+    	if (end_a - begain_a == 1) {
+    		if (a[end_a] >= b[Math.floor((begain_b + end_b) / 2)]) {
+    			return  b[Math.floor((begain_b + end_b) / 2)]
+    		} else {
+    			return Math.max(a[end_a],  b[Math.floor((begain_b + end_b) / 2) - 1])
+    		}
+    	}
 
+    	if (end_a - begain_a === 0) {
+    		if ((end_b - begain_b) % 2 === 1) { // 偶数
+    			if (a[begain_a] < b[Math.floor((begain_b + end_b)/2)]) {
+    				return b[(begain_b + end_b)/2]
+    			} else {
+    				return Math.min(a[begain_a], b[Math.floor((begain_b + end_b)/2) + 1])
+    			}
+    		} else {
+    			if (a[begain_a] >= b[Math.floor((begain_a + begain_b)/2)]) {
+    				return b[Math.floor((begain_a + begain_b)/2)]
+    			} else {
+    				return Math.min(a[begain_a], b[Math.floor((begain_a + begain_b)/2) - 1])
+    			}
+    		}
+    	}
+
+
+    	let mid_a = Math.floor((begain_a + end_a) / 2)
+    	let mid_b = Math.floor((begain_b + end_b) / 2)
+    	if (a[mid_a] < b[mid_b]) {
+    		return get(a, mid_a, end_a, b, begain_a, end_b - (mid_a - begain_a))
+    	} else if (a[mid_a] > b[mid_b]) {
+    		return get(a, begain_a, mid_a, b, begain_b + (end_a - mid_a), end_b)
+    	} else {
+    		return a[mid_a]
+    	}
+    }
+    if (a.length < b.length) {
+    	return get(a, begain_a, end_a, b, begain_b, end_b)
+    } else {
+    	return get(b, begain_b, end_b, a, begain_a, end_a)
+    }
+};
 ```
+
+
+参考：
+
+[中位数](https://v.youku.com/v_show/id_XMzg0NDQwMjg5Ng==.html?spm=a2h0k.11417342.soresults.dtitle)
