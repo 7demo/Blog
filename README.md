@@ -44,7 +44,7 @@
 + [Median of two sort array](/201905/medianoftwosortarray.md)
 + [top k](/201905/topk.md)
 + [qiuck select](/201905/qiuckselect.md)
-+ [Longest Palindromic Substring](/201905/longestPalindrome.md)
++ [Longest Palindromic Substring](/201906/longestPalindrome.md)
 
 ### 读书笔记
 ---
