@@ -67,6 +67,8 @@ function Vue (options) {
 
 + 在`Vue`的原型链挂载[`_init`](/201906/vue-initMixin.md)方法。
 
-+ 挂载`lifecycle`[生命周期事件](/201906/vue-lifecycle.md)。
++ 初始化`lifecycle`[生命周期事件](/201906/vue-lifecycle.md)。
 
 + 初始化`initEvents`事件，[在`vue`创建`events`对象](/201906/vue-events.md)
+
++ 初始化`initRender`, [`vue`实例挂载`createElement`](/201906/vue-render.md)
