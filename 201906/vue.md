@@ -72,3 +72,7 @@ function Vue (options) {
 + 初始化`initEvents`事件，[在`vue`创建`events`对象](/201906/vue-events.md)
 
 + 初始化`initRender`, [`vue`实例挂载`createElement`](/201906/vue-render.md)
+
++ 初始化`initInjections`与`initProvide`，分别在`vue`实例上挂载[`inject`与`__provided`](/201906/vue-inject.md)
+
++ 初始化状态`initState`，初始化[`prop`/`data`/`methods`/`watch`](/201906/vue-state.md)。
