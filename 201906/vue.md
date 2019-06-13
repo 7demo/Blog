@@ -26,3 +26,4 @@ function Tue(options) {
 }
 ```
 
+我们在`Tue`的原型链上挂载一个`_init`方法。
