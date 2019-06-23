@@ -203,8 +203,115 @@ Tue.prototype._init = function (options) {
 }
 ```
 
-拦截`get`与`set`只是手段，实现数据观测并且触发编译才是目的。
+拦截`get`与`set`只是手段，实现数据观测并且触发编译才是目的。由于`data`中可能有无用数据，我们只需要监测有用数据，而哪些数据是有用的？在编译过程中使用到的就是有用的。
+
+之前，我们要实现一个`dep`与`watcher`，用来收集监视的数据与监视数据并变化。
+
+```javascript
+// dep.js
+
+export class Dep {
+	constructor() {
+		// 存放所有的监视器
+		this.subs = []
+	}
+	addSub(sub) {
+		// watcher
+		this.subs.push(sub)
+	}
+	notify() {
+		this.subs.map(sub => sub.update)
+	}
+}
+
+Dep.target = null
+
+```
+
+```javascript
+// watcher.js
+
+export class Watcher {
+	constructor(tm, exp, cb) {
+		this.tm = tm
+		this.exp = exp
+		this.cb = cb
+		// 初始化监视器时，会触发get方法
+		this.get()
+	}
+	get() {
+		// 当前监视器挂载dep上
+		Dep.target = this
+		// 主要是为了触发data的get方法,然后在get拦截器中把监视器放入数据依赖中
+		let arr = this.exp.split('.')
+		let var = this.tm
+		arr.map(item => {
+			val = val[item]
+		})
+		Dep.target = null
+	}
+	update() {
+		let arr = this.exp.split('.')
+		let var = this.tm
+		arr.map(item => {
+			val = val[teim]
+		})
+		// 拿到值 进行回调
+		this.cb(val)
+	}
+}
 
 
+```
 
+刚才讲到，是在编译阶段开始收集依赖：
 
+```javascript
+// compile.js
+replace(frag) {
+	// ...
+	node.textContent = txt.replace(reg, val).trim()
+	// 新建立一个监视器
+	new Watcher(this.tm, RegExp.$1, v => {
+		node.textContent = txt.replace(reg, v).trim()
+	})
+
+	// ...
+	// 新建立一个监视器
+	node.value = this.tm[exp]
+	new Watcher(this.tm, exp, v => {
+		node.value = v
+	})
+}
+```
+
+为了把监视器放入依赖表中，则改动下`observer.js`：
+
+```javascript
+// observer.js
+export const defineReactive = (obj, key, val) => {
+	let dep = new Dep()
+	Object.defineProperty(obj, key, {
+		set(newValue) {
+			val = newValue
+			dep.notify()
+		},
+		get() {
+			// 如果存在监视器则加入
+			// 新建watcher会立即触发get方法
+			Dep.target && dep.addSub(Dep.target)
+			return val
+		}
+	})
+}
+```
+
+现在只是单向数据绑定，如果实现双向绑定，则需要把`node`做下处理：
+
+```javascript
+// compile.js
+node.addEventListener('input', e => {
+	let nc = e.target.value
+	this.tm[exp] = nc
+})
+```
