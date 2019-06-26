@@ -315,3 +315,59 @@ node.addEventListener('input', e => {
 	this.tm[exp] = nc
 })
 ```
+
+#### 增加对数组的处理
+
+现在把`data`中所有都收集`dep`中，数组也不例外，但是只支持数组的`set`并不支持`push/pop`等方法。我们要进行些改动。
+
+在`observer`中需要对数组进行格外处理。
+
+```javascript
+// observer.js
+class Observer{
+	constructor(data) {
+		// dep挂在observer的原因是 由于所有数据对象都已经被收集，所以触发数据更新也要同一dep
+		this.dep = new Dep()
+		this.walk(data)
+	}
+
+	walk(data) {
+		Object.keys(data).map(key => {
+			if (typeof data[key] === 'object') {
+				this.walk(data[key])
+			}
+			// dep用于收集依赖与触发直接更改
+			defineReactive(data, key, data[key], this.dep)
+			if (Array.isArray(data[key])) {
+				// 数组也用dep
+				defineArrayReactive(data, key, this.dep)
+			}
+		})
+	}
+}
+
+export const defineArrayReactive = (obj, key, dep) => {
+	// 不影响array原原型链 创建一个原型对象
+	let arrayProto = Array.prototype
+	let arrayMethods = Object.create(arrayProto);
+
+	// 遍历方法后，原型对象的方法纳入拦截
+	[
+		'push',
+		'pop'
+	].map(item => {
+		Object.defineProperty(arrayMethods, item, {
+			value: function(...arg) {
+				// 使用原本原型链方法
+				const original = arrayProto[item]
+				let args = Array.from(arguments)
+				original.apply(this, args)
+				// 通知更新
+				dep.notify()
+			}
+		})
+	})
+	// 把创建的纳入拦截的方法挂载到对象中的数组上。
+	obj[key].__proto__ = arrayMethods
+}
+```
