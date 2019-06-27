@@ -47,6 +47,8 @@
 + [Longest Palindromic Substring](/201906/longestPalindrome.md)
 + [ZigZag Conversion](/201906/zigzag.md)
 + [Reverse Integer](/201906/reverseinteger.md)
++ [String to Integer](/201906/StringtoInteger.md)
++ [Palindrome Number](/201906/PalindromeNumber.md)
 
 ### 读书笔记
 ---
