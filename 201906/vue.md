@@ -371,3 +371,37 @@ export const defineArrayReactive = (obj, key, dep) => {
 	obj[key].__proto__ = arrayMethods
 }
 ```
+
+#### watch
+
+`watch`相对比较好处理，其实就是`set`数据时，检查在参数`watch`中是否有同名方法，有的话执行。
+
+```javascript
+// init.js
+const tm = this
+tm.$options = options
+const data = tm.data = options.data || {}
+tm.$watch = options.watch || {}
+```
+
+```javascript
+// observer.js
+
+export const defineReactive = (obj, key, val, dep, tm) => {
+	Object.defineProperty(obj, key, {
+		set(newValue) {
+			// 拿到旧值
+			let oval = tm[key]
+			val = newValue
+			dep.notify()
+			// 执行watch的方法
+			tm.$watch[key] && tm.$watch[key](newValue, oval)
+		},
+		get() {
+			Dep.target && dep.addSub(Dep.target)
+			return val
+		}
+	})
+}
+
+```
