@@ -374,34 +374,22 @@ export const defineArrayReactive = (obj, key, dep) => {
 
 #### watch
 
-`watch`相对比较好处理，其实就是`set`数据时，检查在参数`watch`中是否有同名方法，有的话执行。
+`watch`是在初始化时，把所有的`watch`生成一个监视器`Watcher`，生成监视器过程，便与编译模板一样纳入了依赖管理，不过此处只是简单的触发，未做指定触发、去重等。
 
 ```javascript
 // init.js
-const tm = this
-tm.$options = options
-const data = tm.data = options.data || {}
-tm.$watch = options.watch || {}
+createWatch(tm, options.watch)
+
+Tue.prototype.$watch = function(exp, cb) {
+	new Watcher(this, exp, cb)
+}
 ```
 
 ```javascript
-// observer.js
-
-export const defineReactive = (obj, key, val, dep, tm) => {
-	Object.defineProperty(obj, key, {
-		set(newValue) {
-			// 拿到旧值
-			let oval = tm[key]
-			val = newValue
-			dep.notify()
-			// 执行watch的方法
-			tm.$watch[key] && tm.$watch[key](newValue, oval)
-		},
-		get() {
-			Dep.target && dep.addSub(Dep.target)
-			return val
-		}
+// watcher.js
+export const createWatch = (tm, watchs) => {
+	Object.keys(watchs).map(key => {
+		tm.$watch(key, watchs[key])
 	})
 }
-
 ```
