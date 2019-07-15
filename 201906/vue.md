@@ -416,3 +416,61 @@ export class Watcher{
 	}
 ```
 
+现在发现只要一个数据变化，所有的监听都会触发。要稍作调整：
+
+```javascript
+// observer.js
+class Observer{
+	// ...
+	walk(data) {
+		Object.keys(data).map(key => {
+			if (typeof data[key] === 'object') {
+				this.walk(data[key])
+			}
+			if (Array.isArray(data[key])) {
+				defineArrayReactive(data, key, this.tm)
+			} else {
+				defineReactive(data, key, data[key], this.tm)
+			}
+		})
+	}
+}
+export const defineReactive = (obj, key, val, tm, dep) => {
+	dep =  dep || new Dep()
+	Object.defineProperty(obj, key, {
+		set(newValue) {
+			if (val == newValue) return
+			val = newValue
+			dep.notify()
+		},
+		get() {
+			Dep.target && dep.addSub(Dep.target)
+			return val
+		}
+	})
+}
+
+export const defineArrayReactive = (obj, key, tm) => {
+	let dep =  new Dep()
+	let arrayProto = Array.prototype
+	let arrayMethods = Object.create(arrayProto)
+	defineReactive(obj, key, obj[key], tm, dep);
+	[
+		'push',
+		'pop'
+	].map(item => {
+		Object.defineProperty(arrayMethods, item, {
+			value: function(...arg) {
+				const original = arrayProto[item]
+				let args = Array.from(arguments)
+				original.apply(this, args)
+				dep.notify()
+			}
+		})
+	})
+	obj[key].__proto__ = arrayMethods
+}
+
+```
+
+主要是利用闭包特性，每个数据都对应其唯一的dep。
