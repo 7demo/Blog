@@ -393,3 +393,26 @@ export const createWatch = (tm, watchs) => {
 	})
 }
 ```
+
+为了能够在`watcher`的回调中拿到`odlval`与`newval`，需要在`watcher`中做下调整。
+
+```javascript
+// watcher.js
+export class Watcher{
+	constructor(tm, exp, cb) {
+		//...
+		this.value = this.get()
+	},
+	...
+	update() {
+		let arr = this.exp.split('.')
+		let oldValue = this.value
+		let val = this.tm
+		arr.map(item => {
+			val = val[item]
+		})
+		this.value = val
+		this.cb(val, oldValue)
+	}
+```
+
