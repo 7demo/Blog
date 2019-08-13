@@ -474,3 +474,19 @@ export const defineArrayReactive = (obj, key, tm) => {
 ```
 
 主要是利用闭包特性，每个数据都对应其唯一的dep。
+
+#### computed
+
+先看基本理解原理：
+
+- 1，创建`computed`的属性`sum` —— 它依赖于`data`中的属性`msg`
+
+- 2, 把`computed`的属性`sum`，创建`watcher`成为一个`computed[sum] watcher`, 同时在`tue`上对`sum`进行`get`拦截。由于是`computed watcher`先不触发计算获得值。
+
+- 3, 在编译模板时，先创建一个模板`watcher`。触发`get`拦截器，在`get`中会把模板`watcher`推入`targetStack`中。再继续读取`sum`的值，触发`computed[sum] watcher` 计算值。
+
+- 4，在`computed[sum] watcher`计算值时，首先把会把当前`watcher`即`computed[sum] watcher`赋值给`Dep.target`,并推入`targetStack`栈中(此时栈中有两个watcher了，从底到高分别是模板`watcher`与`computed sum watcher`)。由于依赖`msg`，所以会触发`msg`的`get`拦截器。由于代码`Dep.target && ...`，所以把`msg dep`放入`computed[sum] watcher`的依赖列表中。进而把`computed[sum] watcher`放入`msg dep`的订阅中。
+
+- 5, `sum`取值完毕，则`computed[sum] watcher`推出`targetStack`，当前`Dep.target`变成了模板`watcher`，则把模板`watcher`放入`computed watcher`的订阅中
+
+- 6， 至此，改变`msg`的值，会触发订阅重新计算`sum`的值。重新计算时，更新所有的订阅（模板watcher）。
