@@ -490,3 +490,170 @@ export const defineArrayReactive = (obj, key, tm) => {
 - 5, `sum`取值完毕，则`computed[sum] watcher`推出`targetStack`，当前`Dep.target`变成了模板`watcher`，则把模板`watcher`放入`computed watcher`的订阅中
 
 - 6， 至此，改变`msg`的值，会触发订阅重新计算`sum`的值。重新计算时，更新所有的订阅（模板watcher）。
+
+首先，我们要对`Dep`进行改造，主要是增加`target`队列：
+
+```javascript
+let uid = 0
+export class Dep {
+	// ...
+	// 加入依赖
+	depend() {
+		if (Dep.target) {
+			Dep.target.addDep(this)
+		}
+	}
+	// ...
+}
+
+Dep.target = null
+
+const targetStacks = []
+
+export const pushTarget = (target) => {
+	Dep.target = target
+	targetStacks.push(target)
+}
+
+export const popTarget = () => {
+	targetStacks.pop()
+	Dep.target = targetStacks[targetStacks.length - 1]
+}
+```
+
+改造`watcher`。主要是在计算取值时，把依赖放入`watcher dep`，然后通过`addDep`把当前`watcher`纳入所依赖`dep`中。
+
+```javascript
+import {Dep, pushTarget, popTarget} from './dep.js'
+let uid = 0
+export class Watcher{
+	constructor(tm, exp, cb, opts) {
+		// ...
+		// 用来标识是否computed
+		this.lazy = opts.lazy
+		// 暂存依赖
+		this.deps = []
+		this.newDeps = []
+		this.depIds = []
+		this.newDepIds = []
+		if (this.lazy) {
+			this.value = undefined
+		} else {
+			this.value = this.get()
+		}
+	}
+	get() {
+		pushTarget(this)
+		let val
+		// 区分表达式是 方法还是字符串
+		if (typeof this.exp === 'function') {
+			val = this.exp.call(this.tm)
+		} else {
+			let arr = this.exp.split('.')
+			val = this.tm
+			arr.map(item => {
+				val = val[item]
+			})
+		}
+		popTarget()
+		this.cleanupDeps()
+		this.cb(val)
+		return val
+	}
+	 //  把当前watcher 纳入其他dep订阅
+	addDep (dep) {
+		const id = dep.id
+		if (this.newDepIds.indexOf(id) == '-1') {
+			this.newDepIds.push(id)
+			this.newDeps.push(dep)
+			if (this.depIds.indexOf(id) == '-1') {
+				dep.addSub(this)
+			}
+		}
+	}
+	cleanupDeps () {
+	    let i = this.deps.length
+	    while (i--) {
+	      const dep = this.deps[i]
+	      if (this.newDepIds.indexOf(dep.id) == '-1') {
+	        dep.removeSub(this)
+	      }
+	    }
+	    let tmp = this.depIds
+	    this.depIds = this.newDepIds
+	    this.newDepIds = tmp
+	    this.newDepIds = []
+	    tmp = this.deps
+	    this.deps = this.newDeps
+	    this.newDeps = tmp
+	    this.newDeps.length = 0
+	  }
+	// 触发依赖表的订阅
+	depend () {
+	    let i = this.deps.length
+	    while (i--) {
+	      this.deps[i].depend()
+	    }
+	  }
+	update() {
+		let val
+		let oldValue
+		if (typeof this.exp === 'function') {
+			oldValue = this.value
+			val = this.exp.call(this.tm)
+		} else {
+			let arr = this.exp.split('.')
+			oldValue = this.value
+			val = this.tm
+			arr.map(item => {
+				val = val[item]
+			})
+		}
+		this.value = val
+		this.cb(val, oldValue)
+	}
+	evaluate() {
+		this.value = this.get()
+	}
+}
+
+// ...
+```
+
+新增`computed.js`
+
+```javascript
+import {Watcher} from './watcher.js'
+import {Dep} from './dep.js'
+const noop = () => {}
+export const initComputed = (tm, computeds) => {
+	for (const key in computeds) {
+		let watcher = new Watcher(
+			tm,
+			computeds[key],
+			noop,
+			{
+				lazy: true
+			}
+		)
+		Object.defineProperty(tm, key, {
+			get() {
+				if (watcher.lazy) {
+					watcher.evaluate()
+				}
+				if (Dep.target) {
+					watcher.depend()
+				}
+				return watcher.value
+			}
+		})
+	}
+}
+```
+
+最后`init.js`中加入`computed`
+
+```javascript
+// 监控属性
+createWatch(tm, options.watch)
+```
