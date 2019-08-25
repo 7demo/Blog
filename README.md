@@ -32,8 +32,13 @@
 + [备份与回滚文件](/201711/copyandroll.md)
 + [监控进程重启与杀死](/201904/monitor.md)
 
-
 ### 算法
+
++ [动态规划](/201908/greedy.md)
+
++ [贪心算法](/201908/greedy.md)
+
+### leetcode
 ---
 
 + [Two Sum](/201904/twoSum.md)
