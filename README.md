@@ -55,6 +55,7 @@
 + [String to Integer](/201906/StringtoInteger.md)
 + [Palindrome Number](/201906/PalindromeNumber.md)
 + [regular expression matching](/201908/regularexpressionmatching.md)
++ [杨辉三角函数](/201908/generate.md)
 
 ### 读书笔记
 ---
