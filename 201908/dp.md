@@ -130,7 +130,7 @@ function getLis(num) {
 }
 ```
 
-还有个思路就是，找到可能的符合LIS的数组，求其长度。
+还有个思路就是，找到可能的符合LIS的数组，求其长度。复杂度为O(n*logn)
 
 ```javascript
 var lengthOfLIS = function(nums) {
@@ -165,3 +165,15 @@ var lengthOfLIS = function(nums) {
     return dp.length
 };
 ```
+
+> DAG最短路
+
+![avatar](./images/1.jpg)
+
+每条路径的值代表过路费，求到T点花费最小的路径。`f(n)`代表该路径的花费，那么就有：
+
+```
+f(t) = min(f(c) + 20, f(d) + 10)
+```
+
+此时问题同0/1背包问题。
