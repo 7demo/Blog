@@ -190,3 +190,5 @@ a()   //
 console.log(a) // RHS
 var a = 2 // LHS
 ```
+
+> 都说“学会AST, 可以为所欲为”，其实babel、eslint、webpack、rollup等都使用到了`AST`。
