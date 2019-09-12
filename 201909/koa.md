@@ -174,7 +174,75 @@ callback() {
 主要是根据`request/response`创建`ctx`，拿到中间件继续进一步处理`this.handleRequest`。此处的第二个参数就是`next`。
 
 ```javascript
-createContext(request, response) {
-
+createContext(req, res) {
+    const context = Object.create(this.context)
+    const request = Object.create(this.request)
+    const response = Object.create(this.response)
+    context.app = request.app = response.app = this
+    context.req = request.req = response.req = req
+    context.res = request.res = response.res = res
+    request.ctx = response.ctx = context
+    request.response = response
+    request.request = request
+    context.originUrl = request.originUrl = req.url
+    context.status = {}
+    return context
 }
 ```
+
+把`koa`、`request`、`response`绑定到`this/request/response`对象上。
+
+`handleRequest`就是根据参数`ctx`与中间件函数，处理请求进行响应。
+
+```javascript
+let handleErrer = (err) => onerror(err)
+let handleResponse = () => respond(ctx)
+return fnMiddleware(ctx).then(handleResponse).catch(handleErrer)
+```
+
+```javascript
+// onerror
+function onerror(err) {
+    console.err(err)
+}
+```
+
+```javascript
+// response
+function respond(ctx) {
+    const res = ctx.res
+    let body = ctx.body
+    const code = ctx.status
+    // 预请求
+    if (ctx.method == 'HEAD') {
+        ctx.length = Buffer.byteLength(JSON.stringify(body))
+        return res.end()
+    }
+
+    if (Buffer.isBuffer(body)) {
+        return res.end(body)
+    }
+    if (typeof body == 'string') {
+        return res.end(body)
+    }
+    if (body instanceof Stream) {
+        return body.pipe(res)
+    }
+    // json
+    body = JSON.stringify(body)
+    ctx.length = Buffer.byteLength(body)
+    res.end(body)
+}
+```
+
+`response`主要是处理响应，分别对应`buffer`/`string`/`stream`/`json`。
+
+我们还可以让`Koa`继承`event`，这样主动发送事件。
+
+```javascript
+this.app.emit('error')
+```
+
+## context.js / request.js / response.js
+
+> `context/request/response`之所以是模块的形式存在就是为了扩展。
