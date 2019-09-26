@@ -1,0 +1,194 @@
+# koa-router
+
+在`koa`中路由的本质就是在中间件中，通过`ctx.url`匹配地址进行处理。类似如下代码：
+
+```javascript
+app.use((ctx, next) => {
+    switch ctx.url:
+        case '/'
+            ctx.body = 'index'
+            break;
+        case '/body':
+            ctx.body = 'body'
+            break;
+})
+```
+
+但是这样存在着代码繁琐，无法匹配动态路由等问题。不过`koa-router`也是基于此原理来实现的。
+
+`koa-router`源码中有两个文件`router.js`与`layer.js`，分别对应两个对象：`Router`与`Layer`。`Layer`主要是单个路由对象，它拥有路径匹配规则、参数获取、中间件等。`Router`主要是对外暴露的方法，是一个构造函数，用来在`koa`中接受路由注册，并且在`koa`的中间件中进行匹配处理。
+
+这之前首先要简单了解一下`path-to-regexp`，它用来处理路径，返回对应的匹配规则。
+
+### Router
+
+`Router`作为一个构造函数：
+
+```javascript
+// router.js
+var compose = require('koa-compose)
+var methods = require('methods')
+
+function Router(opts) {
+    // 用来在引用时  去 关键字 new
+    // 即，const router = require('koa-router')()
+    // 与 const router = new require('koa-router)()
+    if (!(this instanceof Router)) {
+        return new Router(opts)
+    }
+    this.opts = opts || {}
+    this.methods = this.opts.methods || [
+        'HEAD',
+        'OPTIONS',
+        'GET',
+        'PUT',
+        'PATCH',
+        'POST',
+        'DELETE'
+    ]
+    // 路由参数的中间件组成的对象
+    this.params = {}
+    // 存放单个注册路由layer
+    this.stack = []
+}
+```
+我们使用`router.get/post`等方式挂载路由，所以要根据`methods`遍历，进而在`Router`的原型链上实现对应的方法。
+
+```
+methods.forEach(function(method) {
+    Router.prototype[method] = function (name, path, middleware) {
+        var middleware
+        // 如果第二个参数是字符串或者是正则表达式，则第一个参数是name。否则第二个参数是函数，则第一个参数name其实就是path
+        if (typeof path === 'string' || path instanceof RegExp) {
+            middleware = Array.prototype.slice(arguments, 2)
+        } else {
+            middleware = Array.prototype.slice.call(arguments, 1)
+            path = name
+            name = null
+        }
+        this.register(path, [method], middleware, {
+            name: name
+        })
+        // 方便链式调用
+        return this
+    }
+})
+```
+
+挂载路由时，其实就是根据参数进行注册路由。
+
+```javascript
+Router.prototype.register = function(path, methods, middleware, opts) {
+    opts = opts || {}
+    var router = this
+    var stack = this.stack
+
+    // 如果路径是一个数组，则需要为每个独立注册
+    if (Array.isArray(path)) {
+        path.forEach(function(p) {
+            router.register.call(router, p, methods, middleware, opts)
+        })
+        return this
+    }
+
+    // 生成单个layer路由对象
+    var route = new Layer(path, methods, middleware, {
+        end: opts.end === false ? opts.end : true,
+        name: opts.name,
+        sensitive: opts.sensitive || this.opts.sensitive || false,
+        strict: opts.strict || this.opts.strict || false,
+        prefix: opts.prefix || this.opts.prefix || '',
+        ignoreCaptures: opts.ignoreCaptures
+    })
+
+    // 前缀处理
+    if (this.opts.prefix) {
+        router.setPrefix(this.opts.prefix)
+    }
+
+    // 
+    Object.keys(this.params).forEach(function(param) {
+        route.param(param, this.params[param])
+    }, this)
+
+    // 把单个路由对象放入stack中
+    stack.push(route)
+    
+    return route
+
+}
+```
+
+以上，通过`register`其实就是创建单个路由对象`larer`，存到`stack`中。
+
+我们再看下`layer.js`
+
+```javascript
+var pathToRegExp = require('path-to-regexp');
+var uri = require('urijs');
+
+function Layer(path, methods, middleware, opts) {
+    this.opts = opts || {}
+    this.name = this.opts.name || null
+    this.methods = []
+    this.paramNames = []
+    this.stack = Array.isArray(middleware) ? middleware : [middleware]
+
+    // 把此layer的方法都放入method中，并且HEAD同get的请求同样
+    methods.forEach(function (method) {
+        var l = this.methods.push(method.toUpperCase())
+        if (this.methods[l - 1] === 'GET') {
+            this.methods.unshift('HEAD')
+        }
+    }, this)
+
+    // 保证中间件都是函数
+    this.stack.forEach(function(fn) {
+        var type = (typeof fn);
+        if (type !== 'function') {
+        throw new Error(
+            methods.toString() + " `" + (this.opts.name || path) +"`: `middleware` "
+            + "must be a function, not `" + type + "`"
+        );
+        }
+    }, this);
+
+    this.path = path
+    // 根据路径，参数获得该路由的正则表达式
+    this.regexp = pathToRegExp(path, this.paramNames, this.opts)
+
+}
+
+// 扩展match方法，来检测该layer是否匹配path
+Layer.prototype.match = function(path) {
+    return this.regexp.test(path)
+}
+
+//根据path，返回路径参数key-value对象
+Layer.prototype.params - function(path, captures, existingParams) { 
+    var params = existingParams || {}
+    for (var len = captures.length, i=0; i<len; i++) {
+        if (this.paramNames[i]) {
+            var c = captures[i]
+            params[this.paramNames[i].name] = c ? safeDecodeURICompoentent(c) : c
+        }
+    }
+    return params
+}
+
+// 返回一个数组，包含匹配的路径
+Layer.prototype.captures = function(path) {
+    if (this.opts.ignoreCaptures) {
+        return []
+    }
+    return path.match(this.regexp).slice(1)
+}
+
+// 根据参数路径，产生地址
+Layer.prototype.url = function(params, options) {
+    var args = params
+    var url = this.path.replace(/\(\.\*\)/g, '')
+    var toPath = pathToRegExp.compile(url)
+}
+
+```
