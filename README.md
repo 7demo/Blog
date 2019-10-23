@@ -4,7 +4,7 @@
 ### vue
 ---
 
-- [vue源码学习](/201906/vue.md)
+- [vue源码学习一](/201906/vue.md)
 
 
 ### Javascript
@@ -13,6 +13,7 @@
 + [枚举](/201711/enmuerable.md)
 + [ArrayBuffer](/201904/arraybuffer.md)
 + [AST，JavaScript](/201908/AST.md)
++ [Promise的自实现](/201910/Promise.md)
 
 ### nodejs
 ---
