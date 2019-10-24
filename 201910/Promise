@@ -1,0 +1,27 @@
+# Promise的自实现
+
+## 定义
+
+`Promise`主要是表达一个异步操作的结果或者是结果的承诺。结果有两种：`onFulfilled`与`onRejected`两种状态。
+
+## 规范
+
+现在主要流行的是(`Promise/A+`规范)[http://malcolmyu.github.io/malnote/2015/06/12/Promises-A-Plus/]，指定了符合`Prmoise`表现的方法、状态等。
+
+#### 状态
+
++ Pending. 等待。
+
++ Fulfilled. 成功。
+
++ Rejected. 失败或者异常状态。
+
+状态初始化时是`Pending`，可以转化为`Fulfilled`或`Rejected`。`Fulfilled`与`Rejected`不能互相转化。
+
++ 拥有`then`的方法。接受两个参数`onFulfilled`/`onRejected`，若不为函数可忽略。若为函数第一个参数为`Promise`的终值或者据因。`then`必须返回一个`promise`。
+
+## 实现
+
+> 本质上，我们可以根据`鸭子辩形`的思路来实现一个符合规范的`Promise`。
+
+首先构造一个函数：
