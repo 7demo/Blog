@@ -146,3 +146,48 @@ p1().then(p2).then(function(res) {
 3. 执行`p2).then`其实就是把`res`放到`promise2`的回调集中。
 
 4. 1秒后开始执行`promise1`的回调，进而执行`promise3`，再执行`promise2`的回调。
+
+以下是`Prmise.all`的实现：
+
+```JavaScript
+Prom.all = function(promes) {
+    // 参考then 肯定是要返回promsie的
+    return new Prom(function(reslove) {
+        var i = 0
+        var reslut = []
+        var len = promes.length
+        var count = len
+        function resolveAll(index, value) {
+            reslut[index] = value
+            if (--count == 0) {
+                reslove(reslut)
+            }
+        }
+        function re(index) {
+            return function(value) {
+                resolveAll(index, value)
+            }
+        }
+        // 直接遍历promsie数组，因为需要用到index， 所以re函数包一层形成闭包
+        for(; i < len; i++) {
+            promes[i].then(re(i))
+        }
+    })
+}
+```
+
+`Prmise.trace`：
+
+```javascript
+Prom.trace = function(promes) {
+    return new Prom(function(reslove) {
+        var i = 0;
+        var len = promes.length;
+        for(; i < len; i++) {
+            promes[i].then(function(value) {
+                reslove(value)
+            })
+        }
+    })
+}
+```
