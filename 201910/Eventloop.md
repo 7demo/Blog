@@ -1,10 +1,10 @@
 # Eventloop
 
-> 因为`javascript`是单线程，产生了同步任务与异步任务，所以需要一个机制来调度不同的任务去执行。这个机制就是——`Eventloop`。
+> 因为`javascript`是单线程，为了高效的执行产生了同步任务与异步任务，所以需要一个机制来调度不同的任务去执行。这个机制就是——`Eventloop`。
 
 ## 执行顺序
 
-首先，我们先不做区分执行环境的这样去定义执行顺序：
+首先，我们先知道浏览器是按照以下顺序去执行的：
 
 + 1. 先执行当前同步环境代码。把异步任务分为宏任务与微任务，送进队列注册回调事件。
 
@@ -24,7 +24,7 @@
 
 `Promise`、`MutaionObserver`
 
-除以上之外，还有一个`Process.nexttick`。这个很多地方把它归为微任务，但是注册时间是早于`Promise`的。这里可以把它理解为当前同步任务后执行。
+除以上之外，还有一个`Process.nextTick`。这个很多地方把它归为微任务，但是注册时间是早于`Promise`的。这里可以把它理解为当前同步任务后执行。
 
 看下一段代码：
 
@@ -130,9 +130,63 @@ setTimeout(() => {
 
 + 执行微任务`Promsie(8)`，输出`8`，同时注册`Promise(9)`。微任务队列没空，继续执行`Promsie(11)`， 输出`11`，同时注册`Promise(12)`。继续执行下去，一次输出`9, 12`。
 
-这说明`node`中，到期`timer`是在同时执行的，会把*所有到期的`timer`*都执行完，再执行微任务。
+这说明`node`中，到期`timer`是在同时执行的，会把*所有到期的`timer`*都执行完，再执行微任务。说到这里，可以看node中的执行顺序了。
+
+
+## node的Eventloop
+
+在官方文档，可以了解每次循环有6个阶段。
+
++ `timers`。主要是指到期的`setTimeout/setInterval`。需要注意的是这里是根据到期的时间先后来执行的，并不存在一个队列。这个地方，从js的角度看怎么去定义timer到期是很好理解的。但是从`libuv`的源码上来看，是存在一个判断——若最小到期的timer时间大于`loop`运行时间，则表示没有到期的`timer`。至于什么是`loop`的运行时间，则苦于不会c/c++，无法吃透`libuv`的源码，也没有对应的资料。以后再明确。
+
++ `I/O callbacks/pending callbacks`。根据`libuv`文档，是指`poll`阶段因某些原因不能执行，被延迟到此轮执行的循环。根据`nodejs`文档，是除`timers, setImmediate, close`外的大部分回调都在此段执行。这里根据`poll`的理解，`libuv`文档的解释更合适些。这个地方执行的回到更准确的说是处理系统调用错误，比如`stream, pipe, tcp, udp通信的错误callback`。
+
++ `idle, prepare`。`nodejs`内部使用。具体执行什么也需要读`libuv`源码后才能知晓。
+
++ `poll`。这个阶段会阻塞等待监听基本上所有IO事件的回调。这个等待会有超时时间的，这个超时时间为最快到期的`timer`的时间。这个阶段会一直执行队列中的回调，直到队列为空或者达到执行回调的上限，则会进行下一个阶段。需要注意的是，如果`eventloop`每个阶段都为空，则会一直处于`poll`阶段，等待监听的回调，直到超时。
+
++ `check`。准确来说，这个阶段就只有一个`setTmmediate`。
+
++ `close`。主要是`socket.on(close)`。
+
++ `process.nextTick`。不太同于微任务，它会在以上任何一个阶段结束执行。
+
+以上是宏任务，执行完后会执行微任务，直至队列为空。
 
 ## timer
 
-主要是`setTimeout/setInterval/setImmediate`。
+主要是`setTimeout/setImmediate`的执行顺序。如上文说，一个是在`timer`阶段，一个是`check`阶段。咋看是`setTimeout`在前的。但是实际上我来看看。
+
+```javascript
+setTimeout(()=>{
+	console.log(1)
+})
+setImmediate(() => {
+	console.log(2)
+})
+```
+
+它会在输出`1,2`与`2,1`间随机。
+
+首先，我们得知道`setTimeout`的最小时间是1毫秒，也就是说当不传秒数或者小于1的时候，会默认为1。那么理论上`setImmediate`在前。但是实际情况上，如果`eventloop`准备时间大于1ms，那么`setTimeout`已到期，就会执行`timer`再执行`setImmediate`。如果小于1ms, 此时`timer`堆还为空，就会先执行`setImmediate`。
+
+但是如果在`IO`回调中，他们的顺序是固定的。
+
+```javascript
+let fs = require('fs')
+fs.readFile('./nn.html', () => {
+	setTimeout(()=>{
+		console.log(1)
+	})
+	setImmediate(() => {
+		console.log(2)
+	})
+})
+```
+
+因为在读取文件也就是`IO`后，此时现处于`poll`阶段，那么之前立马就是`check`阶段，所以先会执行`setImmediate`。
+
+从性能上来说，如果要做到异步执行，`setImmediate`比`setTimeout`要好的多。
+
+
 
