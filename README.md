@@ -4,7 +4,8 @@
 ### vue
 ---
 
-- [vue源码学习一](/201906/vue.md)
++ [vue源码学习一](/201906/vue.md)
++ [virtual-dom](/201911/virtual-dom.md)
 
 
 ### Javascript
