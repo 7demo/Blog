@@ -208,3 +208,124 @@ diff(data1, data2)
 ```
 
 得到新旧虚拟dom比较后，其中增加了一个li的节点。下面我们就根据差异做渲染。
+
+```javascript
+// index 表示将要更换元素是父元素的第几个
+// 最顶层parent 则是vue挂在的div，会永远不会动
+function patch(parent, patchObj, index = 0) {
+    if (!patchObj || !parent) {
+        return
+    }
+    if (patchObj.type === nodePatchTypes.CREATE) {
+        return parent.appendChild(createEle(patchObj.vdom))
+    }
+    let element = parent.childNodes[index]
+
+    if (patchObj.type === nodePatchTypes.REMOVE) {
+        return parent.removeChild(element)
+    }
+    if (patchObj.type === nodePatchTypes.REPLACE) {
+        return parent.replaceChild(element, createEle(patchObj.vdom))
+    }
+    if (patchObj.type === nodePatchTypes.UPDATE) {
+        let {props, children} = patchObj
+        patchProps(element, props)
+        let len = children.length
+        while (len) {
+            len --
+            patch(element, children[len], len)
+        }
+    }
+
+}
+
+function patchProps(element, props) {
+    if (!props) {
+        return
+    }
+    props.forEach(patchObj => {
+        if (patchObj.type === propPatchTypes.UPDATE) {
+            element.setAttribute(patchObj.key, patchObj.value)
+        }
+        if (patchObj.type === propPatchTypes.REMOVE) {
+            element.removeAttribute(patchObj.key)
+        }
+    })
+}
+```
+然后我们做个定时器，每一秒触发一次dom更新。
+
+```
+let oldV
+setInterval(() => {
+    let _data = createData()
+    let _patch = diff(oldV, _data)
+    // console.log('11111======111111',_patch)
+    patch(document.querySelector('#main'), _patch)
+    oldV = _data
+}, 1000)
+```
+
+以上代码有个非必要操作，就是先比较出差异，再根据差异patch。其实这一步可以在比较出差异的时候直接更新dom。另外也需要实现新的虚拟dom直接与元素对比，而不是需要暂存旧的dom。
+
+
+```
+// 直接比较 newdom 与现实节点
+function diff(newVDom, parent, index = 0) {
+    // 现在的子元素
+    let element = parent.childNodes[index]
+    // 旧子元素不存在，则表示新增
+    if (element === undefined) {
+        return parent.appendChild(createEle(newVDom))
+    }
+    // 删除
+    if (newVDom === undefined) {
+        return parent.removeChild(element)
+    }
+    // 替换—— 节点类型不一致，都是字符串或者数字时值不一样，都是对象时标签不一致
+    if (!isSameType(newVDom, element)) {
+        return parent.replaceChild(element, createEle(newVDom))
+    }
+    // 更新节点
+    if (element.nodeType === Node.ELEMENT_NODE) {
+        diffProps(newVDom, element)
+        diffChildren(newVDom, element)
+    }
+}
+
+function isSameType(newVDom, element) {
+    let eleType = element.nodeType
+    let vdomType = typeof newVDom
+    if (eleType === Node.TEXT_NODE && (vdomType === 'string' || vdomType === 'number') && element.nodeValue == newVDom) {
+        return true
+    }
+    if (eleType === Node.ELEMENT_NODE && element.tagName.toLowerCase() == newVDom.tag) {
+        return true
+    }
+    return false
+}
+
+function diffProps(newVDom, parent) {
+    let oldProps = {...parent.__props_}
+    let allProps = {...oldProps, ...newVDom.props}
+    Object.keys(allProps).forEach(key => {
+        let oldVal = oldProps[key]
+        let newVal = newVDom.props[key]
+        // 删除
+        if (newVal === undefined) {
+            parent.removeAttribute(key)
+        } else if (oldVal === undefined || oldVal !== newVal) {
+            parent.setAttribute(key, newVal)
+        }
+    })
+    parent.__props_ = newVDom.props
+}
+
+function diffChildren(newVDom, parent) {
+    let len = Math.max(parent.childNodes.length, newVDom.children.length)
+    while (len) {
+        len--
+        diff(newVDom.children[len], parent, len)
+    }
+}
+```
