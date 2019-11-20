@@ -27,3 +27,11 @@
 + 网关：通常把http协议转为其他协议。
 
 + 隧道：在两条链接之前进行数据的盲目转发。http隧道通常在一条或者多条http链接上转发非http链接，比如ssl.
+
+## uri
+
+URL的协议方案由9个部分：
+
+`协议://用户:密码@host:port/path;params?query#frag`
+
+每条报文都包含起始行（协议、请求方法）、header、body
