@@ -329,3 +329,122 @@ function diffChildren(newVDom, parent) {
     }
 }
 ```
+
+如果每条数据中有key呢？
+
+首先，每次比较时，可以把当前子元素分为两类：一是带有key，一个是不带key。
+
+然后，遍历虚拟dom，如果虚拟dom也有key，则找到现子元素带有同样的key进行比较，如果需要不同则处理，如果相同则直接移动位置。（这也是diff函数改造的原因，在进行对比的时候，同时标明是否需要更新）；如果虚拟dom没有key，则找现在有子元素中类似的，如果有类似元素，则进行比较是否进行处理。
+
+最后，再第二部处理时，因为是对照虚拟dom进行处理的，所以先后处理的顺序就是页面最后显示的顺序。最后把现有元素没有用到的进行移除即刻。
+
+```javascript
+// 新增、删除、替换是直接表示改元素不需要更新，因为已处理完毕。如果是更新，则监测是否复用，此时就存在一种情况，就是父元素被复用，但是这个父元素的子元素是更改的，达到最小化的操作dom。
+function diff(dom, newVDom, parent) {
+    // 现在的子元素
+    // 旧子元素不存在，则表示新增
+    if (dom === undefined) {
+        parent.appendChild(createEle(newVDom))
+        return false
+    }
+    // 删除
+    if (newVDom === undefined) {
+        parent.removeChild(dom)
+        return false
+    }
+    // 替换—— 节点类型不一致，都是字符串或者数字时值不一样，都是对象时标签不一致
+    if (!isSameType(newVDom, dom)) {
+        parent.replaceChild(dom, createEle(newVDom))
+        return false
+    }
+    // 更新节点
+    if (dom.nodeType === Node.ELEMENT_NODE) {
+        diffProps(newVDom, dom)
+        diffChildren(newVDom, dom)
+    }
+    return true
+}
+// 判断是否同一类型
+function isSameType(newVDom, element) {
+    let eleType = element.nodeType
+    let vdomType = typeof newVDom
+    if (eleType === Node.TEXT_NODE && (vdomType === 'string' || vdomType === 'number') && element.nodeValue == newVDom) {
+        return true
+    }
+    if (eleType === Node.ELEMENT_NODE && element.tagName.toLowerCase() == newVDom.tag) {
+        return true
+    }
+    return false
+}
+// 先分为两个部分：有key  无key
+function diffChildren(newVDom, parent) {
+    // 存放带有key元素
+    let nodesWithKey = {}
+    let nodesWithKeyCount = 0
+    // 存放没有key元素的
+    let nodesWithoutKey = []
+
+    let childNodes = parent.childNodes
+    let nodeLength = childNodes.length
+
+    let vChildren = newVDom.children
+    let vChildrenLen = vChildren.length
+
+    // 讲现有子元素分为两组
+    for (let i = 0; i < nodeLength; i++) {
+        let child = childNodes[i]
+        let props = child.__props_
+        if (props !== undefined && props.key !== undefined) {
+            nodesWithKey[props.key] = child
+            nodesWithKeyCount++
+        } else {
+            nodesWithoutKey.push(child)
+        }
+    }
+    // 遍历虚拟dom
+    for (let i = 0; i < vChildrenLen; i++) {
+        let vchild = vChildren[i]
+        let vProps = vchild.props
+
+        let dom
+        let vkey = vProps !== undefined ? vProps.key : undefined
+        if (vkey !== undefined) {
+            if (nodesWithKeyCount && nodesWithKey[vkey] !== undefined) {
+                dom = nodesWithKey[vkey]
+                nodesWithKey[vkey] = undefined
+                nodesWithKeyCount--
+            }
+        } else if(nodesWithoutKey.length) {
+            for (let j = 0; j < nodesWithoutKey.length; j++) {
+                let node = nodesWithoutKey[j]
+                if (node !== undefined && isSameType(vchild, node)) {
+                    dom = node
+                    delete nodesWithoutKey[j]
+                    break
+                }
+            }
+        }
+        let isUpdate = diff(dom, vchild, parent)
+        if (isUpdate) {
+            let originChild = childNodes[i]
+            if (originChild !== dom) {
+                parent.insertBefore(dom, originChild)
+            }
+        }
+    }
+    if (nodesWithKeyCount) {
+        for (let key in nodesWithKey) {
+            let node = nodesWithKey[key]
+            if (node !== undefined) {
+                node.parentNode.removeChild(node)
+            }
+        }
+    }
+    while (nodesWithoutKey.length) {
+        let node = nodesWithoutKey.pop()
+        if (node !== undefined) {
+            node.parentNode.removeChild(node)
+        }
+    }
+}
+```
