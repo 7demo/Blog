@@ -7,6 +7,10 @@
 + [vue数据绑定的基本实现](/201906/vue.md)
 + [virtual-dom](/201911/virtual-dom.md)
 + [vue之nexttick与异步渲染](/201911/vue-nexttick.md)
+- [vue之component](/201911/component.md)
+- [vue之指令](/201911/directive.md)
+- [vuex](/201911/directive.md)
+- [vue-router](/201911/directive.md)
 
 
 ### Javascript
