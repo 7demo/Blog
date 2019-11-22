@@ -145,6 +145,6 @@ export function queueWatcher (watcher: Watcher) {
 
 参考：
 
-(深度解析vue的$nextTick的实现原理)['https://github.com/FlyDreame/2m-blog/issues/2']
+[深度解析vue的$nextTick的实现原理](https://github.com/FlyDreame/2m-blog/issues/2)
 
-(Vue源码详解之nextTick：MutationObserver只是浮云，microtask才是核心)['https://github.com/Ma63d/vue-analysis/issues/6']
+[Vue源码详解之nextTick：MutationObserver只是浮云，microtask才是核心](https://github.com/Ma63d/vue-analysis/issues/6)

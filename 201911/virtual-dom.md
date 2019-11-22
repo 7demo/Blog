@@ -449,8 +449,8 @@ function diffChildren(newVDom, parent) {
 }
 ```
 
-以上参考：(https://segmentfault.com/a/1190000016129036)[https://segmentfault.com/a/1190000016129036]
+以上参考：[https://segmentfault.com/a/1190000016129036](https://segmentfault.com/a/1190000016129036)
 
 ## Vue中的Virtual-Dom
 
-`Vue`的学习可以参考(https://github.com/DDFE/DDFE-blog/issues/18)[https://github.com/DDFE/DDFE-blog/issues/18]
+`Vue`的学习可以参考[https://github.com/DDFE/DDFE-blog/issues/18](https://github.com/DDFE/DDFE-blog/issues/18)
