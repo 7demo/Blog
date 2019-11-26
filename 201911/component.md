@@ -443,3 +443,220 @@ export function createComponentInstanceForVnode (
 ```
 
 + 7, `_patch_`中，创建vnode过程中，如果是组件的话执行`createComponent`，进而初始化。
+
+
+## 异步组件
+
+在`_render`执行`createComponent`时，有一个关于异步组件的处理：
+
+```javaScript
+let asyncFactory
+// 如果没有cid 走异步流程
+if (isUndef(Ctor.cid)) {
+  asyncFactory = Ctor
+  Ctor = resolveAsyncComponent(asyncFactory, baseCtor)
+  if (Ctor === undefined) {
+    // return a placeholder node for async component, which is rendered
+    // as a comment node but preserves all the raw information for the node.
+    // the information will be used for async server-rendering and hydration.
+    // 创建一个占位符，注释存在。
+    return createAsyncPlaceholder(
+      asyncFactory,
+      data,
+      context,
+      children,
+      tag
+    )
+  }
+}
+
+export function resolveAsyncComponent (
+  factory: Function,
+  baseCtor: Class<Component>
+): Class<Component> | void {
+  if (isTrue(factory.error) && isDef(factory.errorComp)) {
+    return factory.errorComp
+  }
+
+  if (isDef(factory.resolved)) {
+    return factory.resolved
+  }
+  // 如果当前组件实例存在
+  const owner = currentRenderingInstance
+  if (owner && isDef(factory.owners) && factory.owners.indexOf(owner) === -1) {
+    // already pending
+    factory.owners.push(owner)
+  }
+
+  if (isTrue(factory.loading) && isDef(factory.loadingComp)) {
+    return factory.loadingComp
+  }
+
+  if (owner && !isDef(factory.owners)) {
+    const owners = factory.owners = [owner]
+    let sync = true
+    let timerLoading = null
+    let timerTimeout = null
+
+    ;(owner: any).$on('hook:destroyed', () => remove(owners, owner))
+
+    const forceRender = (renderCompleted: boolean) => {
+      for (let i = 0, l = owners.length; i < l; i++) {
+        (owners[i]: any).$forceUpdate()
+      }
+
+      if (renderCompleted) {
+        owners.length = 0
+        if (timerLoading !== null) {
+          clearTimeout(timerLoading)
+          timerLoading = null
+        }
+        if (timerTimeout !== null) {
+          clearTimeout(timerTimeout)
+          timerTimeout = null
+        }
+      }
+    }
+    // once表示只执行一次，正常加载时
+    const resolve = once((res: Object | Class<Component>) => {
+      // cache resolved
+      factory.resolved = ensureCtor(res, baseCtor)
+      // invoke callbacks only if this is not a synchronous resolve
+      // (async resolves are shimmed as synchronous during SSR)
+      if (!sync) {
+        forceRender(true)
+      } else {
+        owners.length = 0
+      }
+    })
+
+    // 未能正常加载
+    const reject = once(reason => {
+      process.env.NODE_ENV !== 'production' && warn(
+        `Failed to resolve async component: ${String(factory)}` +
+        (reason ? `\nReason: ${reason}` : '')
+      )
+      if (isDef(factory.errorComp)) {
+        factory.error = true
+        forceRender(true)
+      }
+    })
+    // 执行factory函数
+    // 其实这个函数是经过webpack处理的
+    const res = factory(resolve, reject)
+
+    if (isObject(res)) {
+      // 如果Promise
+      if (isPromise(res)) {
+        // () => Promise
+        if (isUndef(factory.resolved)) {
+          res.then(resolve, reject)
+        }
+      } else if (isPromise(res.component)) {
+        res.component.then(resolve, reject)
+
+        if (isDef(res.error)) {
+          factory.errorComp = ensureCtor(res.error, baseCtor)
+        }
+
+        if (isDef(res.loading)) {
+          factory.loadingComp = ensureCtor(res.loading, baseCtor)
+          if (res.delay === 0) {
+            factory.loading = true
+          } else {
+            timerLoading = setTimeout(() => {
+              timerLoading = null
+              if (isUndef(factory.resolved) && isUndef(factory.error)) {
+                factory.loading = true
+                forceRender(false)
+              }
+            }, res.delay || 200)
+          }
+        }
+
+        if (isDef(res.timeout)) {
+          timerTimeout = setTimeout(() => {
+            timerTimeout = null
+            if (isUndef(factory.resolved)) {
+              reject(
+                process.env.NODE_ENV !== 'production'
+                  ? `timeout (${res.timeout}ms)`
+                  : null
+              )
+            }
+          }, res.timeout)
+        }
+      }
+    }
+
+    sync = false
+    // return in case resolved synchronously
+    return factory.loading
+      ? factory.loadingComp
+      : factory.resolved
+  }
+}
+
+```
+
+异步组件可以如下使用：
+
+```javaScript
+const AsyncComponent = () => ({
+  // 加载组件（最终应该返回一个 Promise）
+  component: import('./MyComponent.vue'),
+  // 异步组件加载中(loading)，展示为此组件
+  loading: LoadingComponent,
+  // 加载失败，展示为此组件
+  error: ErrorComponent,
+  // 展示 loading 组件之前的延迟时间。默认：200ms。
+  delay: 200,
+  // 如果提供 timeout，并且加载用时超过此 timeout，
+  // 则展示错误组件。默认：Infinity。
+  timeout: 3000
+})
+```
+
+### Keep-alive
+
+```javaScript
+init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
+    if (
+      vnode.componentInstance &&
+      !vnode.componentInstance._isDestroyed &&
+      vnode.data.keepAlive
+    ) {
+      // kept-alive components, treat as a patch
+      const mountedNode: any = vnode // work around flow
+      componentVNodeHooks.prepatch(mountedNode, mountedNode)
+    } else {
+      const child = vnode.componentInstance = createComponentInstanceForVnode(
+        vnode,
+        activeInstance
+      )
+      child.$mount(hydrating ? vnode.elm : undefined, hydrating)
+    }
+  }
+
+insert (vnode: MountedComponentVNode) {
+    const { context, componentInstance } = vnode
+    if (!componentInstance._isMounted) {
+      componentInstance._isMounted = true
+      callHook(componentInstance, 'mounted')
+    }
+    if (vnode.data.keepAlive) {
+      if (context._isMounted) {
+        // vue-router#1212
+        // During updates, a kept-alive component's child components may
+        // change, so directly walking the tree here may call activated hooks
+        // on incorrect children. Instead we push them into a queue which will
+        // be processed after the whole patch process ended.
+        queueActivatedComponent(componentInstance)
+      } else {
+        activateChildComponent(componentInstance, true /* direct */)
+      }
+    }
+  }
+```
+
+在初始化组件时，如果`vnode.data.keepAlive`为`true`切组件存在时，则直接执行`prepatch`方法。并且最后`insert`时做兼容处理，主要时根据`iskeepalive`来确定是否激活钩子。它的生命周期：`created-> mounted-> activated -> deactivated -> activated...`
