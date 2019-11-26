@@ -1,6 +1,6 @@
 # Vue之component
 
-> 在Vue中，有三种注册组件方式：Vue.extend, Vue.component及通过路由挂载。
+> 在Vue中，可通过：Vue.extend, Vue.component创建组件。
 
 ### Vue.extend
 
@@ -127,67 +127,319 @@ export function initAssetRegisters (Vue: GlobalAPI) {
 
 以上，我们把组件创建好，会在`vue.options`存在一个以组件名称命名的组件。下面将是渲染。
 
-我们还是需要从`patch`方法开始，它是用来生成`Vnode`的。在方法`patch`中`createElm`中：
+我们还是需要从`$mount`方法开始：
 
 ```javaScript
-function createElm (
-    vnode,
-    insertedVnodeQueue,
-    parentElm,
-    refElm,
-    nested,
-    ownerArray,
-    index
-  ) {
-
-    vnode.isRootInsert = !nested // for transition enter check
-    // 如果createComponetent返回true，表示当前元素是一个组件
-    if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
-      return
-    }
-    // 进而创建子元素
-    createChildren(vnode, children, insertedVnodeQueue)
-  }
-// 创建子元素
-function createChildren (vnode, children, insertedVnodeQueue) {
-    if (Array.isArray(children)) {
-        if (process.env.NODE_ENV !== 'production') {
-        checkDuplicateKeys(children)
-        }
-        // 遍历子元素包括，包括组件元素，又掉起createElm
-        for (let i = 0; i < children.length; ++i) {
-        createElm(children[i], insertedVnodeQueue, vnode.elm, null, true, children, i)
-        }
-    } else if (isPrimitive(vnode.text)) {
-        nodeOps.appendChild(vnode.elm, nodeOps.createTextNode(String(vnode.text)))
-    }
+Vue.prototype.$mount = function (
+  el?: string | Element,
+  hydrating?: boolean
+): Component {
+  el = el && inBrowser ? query(el) : undefined
+  return mountComponent(this, el, hydrating)
 }
 ```
 
-当时组件元素时，
++ 1，开始在`$mount`方法中调用`mountComponent`
+
+```javaScript
+updateComponent = () => {
+  vm._update(vm._render(), hydrating)
+}
+new Watcher(vm, updateComponent, noop, {
+  before () {
+    if (vm._isMounted && !vm._isDestroyed) {
+      callHook(vm, 'beforeUpdate')
+    }
+  }
+}, true /* isRenderWatcher */)
+```
++ 2，在`mountComponent`中拥有`updateComponent`方法，此方法创建一个订阅器，响应数据的变化。在内部有两个关键的方法`_render`与`_update`。
+
+```javaScript
+Vue.prototype._render = function (): VNode {
+    const vm: Component = this
+    const { render, _parentVnode } = vm.$options
+    vnode = render.call(vm._renderProxy, vm.$createElement)
+}
+```
+
++ 3, `vm.$createElement`其实就是`_createElement`方法。
+
+```javaScript
+vnode = createComponent(Ctor, data, context, children, tag)
+```
+
++ 4，在遍历创建vdom的时候，遇到组件，调用`createComponent`，注意在`vnode.componentOptions.Ctor`赋值组件。
 
 ```javascript
-function createComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
-    let i = vnode.data
-    if (isDef(i)) {
-      const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
-      if (isDef(i = i.hook) && isDef(i = i.init)) {
-        i(vnode, false /* hydrating */)
-      }
-      // after calling the init hook, if the vnode is a child component
-      // it should've created a child instance and mounted it. the child
-      // component also has set the placeholder vnode's elm.
-      // in that case we can just return the element and be done.
-      if (isDef(vnode.componentInstance)) {
-        initComponent(vnode, insertedVnodeQueue)
-        insert(parentElm, vnode.elm, refElm)
-        if (isTrue(isReactivated)) {
-          reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
-        }
-        return true
-      }
+export function createComponent (
+  Ctor: Class<Component> | Function | Object | void,
+  data: ?VNodeData,
+  context: Component,
+  children: ?Array<VNode>,
+  tag?: string
+): VNode | Array<VNode> | void {
+  if (isUndef(Ctor)) {
+    return
+  }
+
+  const baseCtor = context.$options._base
+
+  // plain options object: turn it into a constructor
+  if (isObject(Ctor)) {
+    Ctor = baseCtor.extend(Ctor)
+  }
+
+  // if at this stage it's not a constructor or an async component factory,
+  // reject.
+  if (typeof Ctor !== 'function') {
+    if (process.env.NODE_ENV !== 'production') {
+      warn(`Invalid Component definition: ${String(Ctor)}`, context)
     }
+    return
+  }
+
+  // 异步组件
+  let asyncFactory
+  if (isUndef(Ctor.cid)) {
+    asyncFactory = Ctor
+    Ctor = resolveAsyncComponent(asyncFactory, baseCtor)
+    if (Ctor === undefined) {
+      // return a placeholder node for async component, which is rendered
+      // as a comment node but preserves all the raw information for the node.
+      // the information will be used for async server-rendering and hydration.
+      return createAsyncPlaceholder(
+        asyncFactory,
+        data,
+        context,
+        children,
+        tag
+      )
+    }
+  }
+
+  data = data || {}
+
+  resolveConstructorOptions(Ctor)
+
+  if (isDef(data.model)) {
+    transformModel(Ctor.options, data)
+  }
+
+  // extract props
+  const propsData = extractPropsFromVNodeData(data, Ctor, tag)
+
+  // functional component
+  if (isTrue(Ctor.options.functional)) {
+    return createFunctionalComponent(Ctor, propsData, data, context, children)
+  }
+
+  const listeners = data.on
+  data.on = data.nativeOn
+
+  if (isTrue(Ctor.options.abstract)) {
+    // abstract components do not keep anything
+    // other than props & listeners & slot
+
+    // work around flow
+    const slot = data.slot
+    data = {}
+    if (slot) {
+      data.slot = slot
+    }
+  }
+
+  // 挂上componentVNodeHooks的init、prepatch、insert、destory钩子
+  // 在__patch__中createComponent中使用
+  installComponentHooks(data)
+  // return a placeholder vnode
+  const name = Ctor.options.name || tag
+  // 创建tag为vue-component-x-name格式的组件节点vdom
+  const vnode = new VNode(
+    `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
+    data, undefined, undefined, undefined, context,
+    { Ctor, propsData, listeners, tag, children },
+    asyncFactory
+  )
+  return vnode
+}
+```
+
++ 5，以上`_render`创建了Vdom，包括组件。
+
+```javaScript
+Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
+    vm.$el = vm.__patch__(prevVnode, vnode)
   }
 ```
 
++ 6, `_update`中调用`__patch__`。
 
+```javascript
+createPatchFunction() {
+  return function patch (oldVnode, vnode, hydrating, removeOnly) {
+    createElm(
+      vnode,
+      insertedVnodeQueue,
+      // extremely rare edge case: do not insert if old element is in a
+      // leaving transition. Only happens when combining transition +
+      // keep-alive + HOCs. (#4590)
+      oldElm._leaveCb ? null : parentElm,
+      nodeOps.nextSibling(oldElm)
+    )
+
+    invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
+    return vnode.elm
+  }
+}
+
+function createElm (
+  vnode,
+  insertedVnodeQueue,
+  parentElm,
+  refElm,
+  nested,
+  ownerArray,
+  index
+) {
+  if (isDef(vnode.elm) && isDef(ownerArray)) {
+    // This vnode was used in a previous render!
+    // now it's used as a new node, overwriting its elm would cause
+    // potential patch errors down the road when it's used as an insertion
+    // reference node. Instead, we clone the node on-demand before creating
+    // associated DOM element for it.
+    vnode = ownerArray[index] = cloneVNode(vnode)
+  }
+
+  vnode.isRootInsert = !nested // for transition enter check
+  // 如果是组件
+  if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
+    return
+  }
+
+  const data = vnode.data
+  const children = vnode.children
+  const tag = vnode.tag
+  if (isDef(tag)) {
+    if (process.env.NODE_ENV !== 'production') {
+      if (data && data.pre) {
+        creatingElmInVPre++
+      }
+      if (isUnknownElement(vnode, creatingElmInVPre)) {
+        warn(
+          'Unknown custom element: <' + tag + '> - did you ' +
+          'register the component correctly? For recursive components, ' +
+          'make sure to provide the "name" option.',
+          vnode.context
+        )
+      }
+    }
+
+    vnode.elm = vnode.ns
+      ? nodeOps.createElementNS(vnode.ns, tag)
+      : nodeOps.createElement(tag, vnode)
+    setScope(vnode)
+
+    /* istanbul ignore if */
+    if (__WEEX__) {
+      // in Weex, the default insertion order is parent-first.
+      // List items can be optimized to use children-first insertion
+      // with append="tree".
+      const appendAsTree = isDef(data) && isTrue(data.appendAsTree)
+      if (!appendAsTree) {
+        if (isDef(data)) {
+          invokeCreateHooks(vnode, insertedVnodeQueue)
+        }
+        insert(parentElm, vnode.elm, refElm)
+      }
+      createChildren(vnode, children, insertedVnodeQueue)
+      if (appendAsTree) {
+        if (isDef(data)) {
+          invokeCreateHooks(vnode, insertedVnodeQueue)
+        }
+        insert(parentElm, vnode.elm, refElm)
+      }
+    } else {
+      createChildren(vnode, children, insertedVnodeQueue)
+      if (isDef(data)) {
+        invokeCreateHooks(vnode, insertedVnodeQueue)
+      }
+      insert(parentElm, vnode.elm, refElm)
+    }
+
+    if (process.env.NODE_ENV !== 'production' && data && data.pre) {
+      creatingElmInVPre--
+    }
+  } else if (isTrue(vnode.isComment)) {
+    vnode.elm = nodeOps.createComment(vnode.text)
+    insert(parentElm, vnode.elm, refElm)
+  } else {
+    vnode.elm = nodeOps.createTextNode(vnode.text)
+    insert(parentElm, vnode.elm, refElm)
+  }
+}
+
+function createComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
+  let i = vnode.data
+  if (isDef(i)) {
+    const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
+    // 注意此处一步步把i=data.hook.init 赋值给i
+    // 其实是在执行 init(vnode, false)
+    if (isDef(i = i.hook) && isDef(i = i.init)) {
+      i(vnode, false /* hydrating */)
+    }
+    if (isDef(vnode.componentInstance)) {
+      initComponent(vnode, insertedVnodeQueue)
+      insert(parentElm, vnode.elm, refElm)
+      if (isTrue(isReactivated)) {
+        reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
+      }
+      return true
+    }
+  }
+}
+
+const componentVNodeHooks = {
+  init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
+    if (
+      vnode.componentInstance &&
+      !vnode.componentInstance._isDestroyed &&
+      vnode.data.keepAlive
+    ) {
+      // kept-alive components, treat as a patch
+      const mountedNode: any = vnode // work around flow
+      componentVNodeHooks.prepatch(mountedNode, mountedNode)
+    } else {
+      // 在此会创建组件的实例
+      const child = vnode.componentInstance = createComponentInstanceForVnode(
+        vnode,
+        activeInstance
+      )
+      console.log(111111, vnode.elm, vnode)
+      child.$mount(hydrating ? vnode.elm : undefined, hydrating)
+    }
+  }
+}
+
+export function createComponentInstanceForVnode (
+  vnode: any, // we know it's MountedComponentVNode but flow doesn't
+  parent: any, // activeInstance in lifecycle state
+): Component {
+  const options: InternalComponentOptions = {
+    _isComponent: true,
+    _parentVnode: vnode,
+    parent
+  }
+  // check inline-template render functions
+  const inlineTemplate = vnode.data.inlineTemplate
+  if (isDef(inlineTemplate)) {
+    options.render = inlineTemplate.render
+    options.staticRenderFns = inlineTemplate.staticRenderFns
+  }
+  // 终于在这儿，见到了新建实例组件，进而调用_init。
+  // Ctor是在_render, _createElement->createComponent中赋值
+  return new vnode.componentOptions.Ctor(options)
+}
+```
+
++ 7, `_patch_`中，创建vnode过程中，如果是组件的话执行`createComponent`，进而初始化。
