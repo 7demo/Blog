@@ -168,6 +168,6 @@ function _update (oldVnode, vnode) {
 
 ## v-model
 
-本质上，`v-model`是一个语法糖，它表明输入框会有一个`v-on`与`:value`。
+本质上，`v-model`是一个语法糖，它相当于输入框会绑定两个属性`v-on`与`:value`。
 
 
