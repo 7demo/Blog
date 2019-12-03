@@ -11,7 +11,7 @@
 + [vue之plugin](/201911/plugin.md)
 + [vue插件](/201911/plugin.md)
 + [vuex](/201911/vuex.md)
-- [vue-router](/201911/directive.md)
+- [vue-router](/201912/vue-router.md)
 - [vue-mixin](/201911/directive.md)
 
 
