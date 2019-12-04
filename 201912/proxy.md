@@ -73,3 +73,22 @@ const obj = new Proxy(target, {
 2. `Proxy`可以直接劫持数组
 
 
+### 数据绑定的实现
+
+```javaScript
+var defineReactive = (data) => {
+    return new Proxy(data, {
+        get(obj, key) {
+            // 获取值
+            return Reflect.get(obj, key)
+        },
+        set(obj, key, newval) {
+            // 改变值
+            Reflect.set(obj, prop, newval)
+        }
+    })
+}
+var obj = defineReactive({
+    count: 1
+})
+```
