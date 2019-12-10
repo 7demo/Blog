@@ -54,6 +54,7 @@ module.exports = {
 }
 
 ```
+## webpack-cli/webpack
 
 安装`webpack-cli`时，会把`webpack`也装好。`webpack-cli`的入口文件是`webpack-cli/bin/cli.js`，这文件的主要作用是引入`webpack`生成`compiler`, 根据是否需要`watch`来运行。
 
@@ -107,7 +108,7 @@ if (firstOptions.watch || options.watch) {
 
 在`webpack-cli`中，`require('wabpack')`是引用的`webpack`，它的入口文件时`webpack/lib/webpack.js`。在`webpack.js`中主要做了以下事情：
 
-1. 验证`webpack`参数是否正确
+#### 1. 验证`webpack`参数是否正确
 
 ```javaScript
 const webpackOptionsValidationErrors = validateSchema(
@@ -119,7 +120,9 @@ if (webpackOptionsValidationErrors.length) {
 }
 ```
 
-2. 判断`webpack`的参数是对象或者是数组，分别对应了是单页面应用还是多页面应用。如果是多页面，则会遍历分别执行`webpack(option)`。
+`validateSchema`是通过预定义参数的`schema`， 来通过`ajv`这个第三方库来做判断的。
+
+#### 2. 判断`webpack`的参数是对象或者是数组，分别对应了是单页面应用还是多页面应用。如果是多页面，则会遍历分别执行`webpack(option)`。
 
 ```javaScript
 compiler = new MultiCompiler(
@@ -135,22 +138,57 @@ compiler = new Compiler(options.context);
 compiler.options = options;
 ```
 
-4. 获得`node`环境的能力
+4. 获得`node`环境的能力——读写与watcher的能力，同时这个在`beforeRun`挂载钩子。
 
 ```javaScript
 new NodeEnvironmentPlugin({
     infrastructureLogging: options.infrastructureLogging
 }).apply(compiler);
+
+class NodeEnvironmentPlugin {
+    constructor(options) {
+        this.options = options || {};
+    }
+
+    apply(compiler) {
+        // 使用node console
+        compiler.infrastructureLogger = createConsoleLogger(
+            Object.assign(
+                {
+                    level: "info",
+                    debug: false,
+                    console: nodeConsole
+                },
+                this.options.infrastructureLogging
+            )
+        );
+        compiler.inputFileSystem = new CachedInputFileSystem(
+            new NodeJsInputFileSystem(),
+            60000
+        );
+        const inputFileSystem = compiler.inputFileSystem;
+        compiler.outputFileSystem = new NodeOutputFileSystem();
+        compiler.watchFileSystem = new NodeWatchFileSystem(
+            compiler.inputFileSystem
+        );
+        // 挂载beforeRun钩子
+        compiler.hooks.beforeRun.tap("NodeEnvironmentPlugin", compiler => {
+            if (compiler.inputFileSystem === inputFileSystem) inputFileSystem.purge();
+        });
+    }
+}
 ```
 
-5. 执行参数中的插件
+5. 应用参数中的插件
 
 ```javaScript
+// 此处的插件只有 HtmlWebpackPlugin
 if (options.plugins && Array.isArray(options.plugins)) {
     for (const plugin of options.plugins) {
         if (typeof plugin === "function") {
             plugin.call(compiler, compiler);
         } else {
+            // 应用插件HtmlWebpackPlugin
             plugin.apply(compiler);
         }
     }
@@ -162,6 +200,8 @@ if (options.plugins && Array.isArray(options.plugins)) {
 ```javaScript
 compiler.hooks.environment.call();
 compiler.hooks.afterEnvironment.call();
+// 此处挂载 SingleEntryPlugin 钩子到make上
+compiler.options = new WebpackOptionsApply().process(options, compiler);
 ```
 
 7. 如果`callback`，则直接执行`compiler.run`，否则只暴露`compiler`。
@@ -195,4 +235,202 @@ webpack.validateSchema = validateSchema;
 webpack.WebpackOptionsValidationError = WebpackOptionsValidationError;
 ```
 
+## Compiler
 
+`Compiler`是继承`tapable`，在`hooks`对象中定义各种了钩子管理器——`shouldEmit/beforeRun`...，用于在对应的时机调用。
+
+```javaScript
+class Compiler extends Tapable {
+    constructor(context) {
+        super();
+        this.hooks = {
+            // 钩子管理
+        }
+    }
+}
+```
+
+当执行`compiler.run()`时，首先通过`this.hooks.beforeRun.callAsync`，来执行`beforeRun`的钩子，再执行`run`的钩子。然后执行`readRecords`, 它的回调为`compile`
+
+```javaScript
+run(callback) {
+    const finalCallback = (err, stats) => {
+        // 回调
+    };
+    this.hooks.beforeRun.callAsync(this, err => {
+        if (err) return finalCallback(err);
+        this.hooks.run.callAsync(this, err => {
+            if (err) return finalCallback(err);
+            this.readRecords(err => {
+                if (err) return finalCallback(err);
+                this.compile(onCompiled);
+            });
+        });
+    });
+}
+```
+
+```javaScript
+// readRecords
+readRecords(callback) {
+    if (!this.recordsInputPath) {
+        this.records = {};
+        return callback();
+    }
+    this.inputFileSystem.stat(this.recordsInputPath, err => {
+        // It doesn't exist
+        // We can ignore this.
+        if (err) return callback();
+        this.inputFileSystem.readFile(this.recordsInputPath, (err, content) => {
+            if (err) return callback(err);
+            try {
+                this.records = parseJson(content.toString("utf-8"));
+            } catch (e) {
+                e.message = "Cannot parse records: " + e.message;
+                return callback(e);
+            }
+            return callback();
+        });
+    });
+}
+```
+
+在`compile()`时，会先后执行`beforeCompile`/`compile.call`/`make.callAsync`/`compilation.finish`/`compilation.seal`/`afterCompile.callAsync/shouldEmit/this.emitAssets`。这与之前`beforeRun`时触发的函数构成了整个`webpack`执行流程。
+
+```javaScript
+// compile
+compile(callback) {
+    const params = this.newCompilationParams();
+    this.hooks.beforeCompile.callAsync(params, err => {
+        if (err) return callback(err);
+        this.hooks.compile.call(params);
+        const compilation = this.newCompilation(params);
+        this.hooks.make.callAsync(compilation, err => {
+            if (err) return callback(err);
+            compilation.finish(err => {
+                if (err) return callback(err);
+                compilation.seal(err => {
+                    if (err) return callback(err);
+                    this.hooks.afterCompile.callAsync(compilation, err => {
+                        if (err) return callback(err);
+                        return callback(null, compilation);
+                    });
+                });
+            });
+        });
+    });
+}
+```
+
+看到这里，就会发现`webpack`就是基于`tapable`的发布订阅实现的一个插件管理系统，通过在整个流程不同阶段挂载触发对应的钩子来实现模块的打包、处理、输出。
+
+
+#### beforeRun
+
+`beforeRun`挂载的钩子是在获取`node`环境能力时的`NodeEnvironmentPlugin`，这个地方会执行`inputFileSystem.purge()`, 主要是本地缓存数据初始化。
+
+```javaScript
+compiler.hooks.beforeRun.tap("NodeEnvironmentPlugin", compiler => {
+    if (compiler.inputFileSystem === inputFileSystem) inputFileSystem.purge();
+});
+```
+
+```javaScript
+// purge
+purge(what) {
+    // 本地缓存初始化
+    this._statStorage.purge(what);
+    // 读取文件夹缓存初始化
+    this._readdirStorage.purge(what);
+    // 读取文件
+    this._readFileStorage.purge(what);
+    this._readlinkStorage.purge(what);
+    this._readJsonStorage.purge(what);
+}
+// inputFileSystem.purge
+purge(what) {
+    if (!what) {
+        this.count = 0;
+        clearInterval(this.interval);
+        this.nextTick = null;
+        this.data.clear();
+        this.levels.forEach(level => {
+            level.clear();
+        });
+    } else if (typeof what === "string") {
+        for (let key of this.data.keys()) {
+            if (key.startsWith(what)) this.data.delete(key);
+        }
+    } else {
+        for (let i = what.length - 1; i >= 0; i--) {
+            this.purge(what[i]);
+        }
+    }
+}
+```
+#### run.callAsync
+
+`run`挂载的钩子是`CachePlugin`。
+
+```javaScript
+compiler.hooks.run.tapAsync("CachePlugin", (compiler, callback) => {
+    // 就demo来说，_lastCompilationFileDependencies为undefined
+    if (!compiler._lastCompilationFileDependencies) {
+        return callback();
+    }
+});
+```
+
+#### readRecords
+
+就`demo`来说，`readRecords`是直接执行了回调`compile`
+
+#### compile函数
+
+`compile`函数中，首先通过`newCompilationParams()`返回`params`:
+
+```javaScript
+const params = {
+    normalModuleFactory: this.createNormalModuleFactory(),
+    contextModuleFactory: this.createContextModuleFactory(),
+    compilationDependencies: new Set()
+};
+```
+
+`normalModuleFactory`与`contextModuleFactory`都是基于`tapable`的`module`工厂。
+
+#### newCompilation
+
+根据`this.newCompilation`生成`compilation`。
+
+```javaScript
+newCompilation(params) {
+    const compilation = this.createCompilation();
+    compilation.fileTimestamps = this.fileTimestamps;
+    compilation.contextTimestamps = this.contextTimestamps;
+    compilation.name = this.name;
+    compilation.records = this.records;
+    compilation.compilationDependencies = params.compilationDependencies;
+    this.hooks.thisCompilation.call(compilation, params);
+    this.hooks.compilation.call(compilation, params);
+    return compilation;
+}
+```
+
+`newcompilation`也是继承`tapable`。`compile`可以理解为编译器，控制着整个流程。而`compilation`则是一个编译对象，拥有整个过程产生的一切对象。
+
+
+#### make.callAsync
+
+`make`则是开始进行编译，会先后触发`HtmlWebpackPlugin`与`SingleEntryPlugin`钩子。
+
+`SingleEntryPlugin`钩子会触发`compilation.addEntry`，`addEntry`主要是调用了`this._addModuleChain`
+
+
+## webpack性能优化
+
+## 插件机制
+
+## 插件编写
+
+## webpack打包模块
