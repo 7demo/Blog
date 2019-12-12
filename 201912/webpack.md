@@ -108,7 +108,7 @@ if (firstOptions.watch || options.watch) {
 
 在`webpack-cli`中，`require('wabpack')`是引用的`webpack`，它的入口文件时`webpack/lib/webpack.js`。在`webpack.js`中主要做了以下事情：
 
-#### 1. 验证`webpack`参数是否正确
+1. 验证`webpack`参数是否正确
 
 ```javaScript
 const webpackOptionsValidationErrors = validateSchema(
@@ -122,7 +122,7 @@ if (webpackOptionsValidationErrors.length) {
 
 `validateSchema`是通过预定义参数的`schema`， 来通过`ajv`这个第三方库来做判断的。
 
-#### 2. 判断`webpack`的参数是对象或者是数组，分别对应了是单页面应用还是多页面应用。如果是多页面，则会遍历分别执行`webpack(option)`。
+2. 判断`webpack`的参数是对象或者是数组，分别对应了是单页面应用还是多页面应用。如果是多页面，则会遍历分别执行`webpack(option)`。
 
 ```javaScript
 compiler = new MultiCompiler(
@@ -130,15 +130,87 @@ compiler = new MultiCompiler(
 );
 ```
 
-3. 结合默认参数，处理参数，生成`compiler`实例。
+3. 结合默认参数，处理参数。
 
 ```javaScript
+// WebpackOptionsDefaulter 初始化时会默认设置一些配置 这也是webpack4可以零配置的原因。
 options = new WebpackOptionsDefaulter().process(options);
+```
+
+`WebpackOptionsDefaulter`是继承`OptionsDefaulter`， 在初始化创建实例时，通过`set`创建了很多默认配置。
+
+```javaScript
+// OptionsDefaulter
+// 如果三个参数，则代表第三个参数为默认值，第二个值是config配置
+// 如果两个参数，则默认值就就是第二个值。没有其他配置
+// this.set("cache", "make", options => options.mode === "development");
+// this.set("context", process.cwd());
+set(name, config, def) {
+    if (def !== undefined) {
+        this.defaults[name] = def;
+        this.config[name] = config;
+    } else {
+        this.defaults[name] = config;
+        delete this.config[name];
+    }
+}
+```
+
+`process`是根据默认参数的类型来处理参数——`call`/`make`/`append`。
+
+```javaScript
+process(options) {
+    options = Object.assign({}, options);
+    for (let name in this.defaults) {
+        switch (this.config[name]) {
+            // 把默认的值赋值到option
+            case undefined:
+                if (getProperty(options, name) === undefined) {
+                    setProperty(options, name, this.defaults[name]);
+                }
+                break;
+            // 直接执行option.name 再复制给option.name
+            case "call":
+                setProperty(
+                    options,
+                    name,
+                    this.defaults[name].call(this, getProperty(options, name), options)
+                );
+                break;
+            // 执行默认的name赋值给option
+            case "make":
+                if (getProperty(options, name) === undefined) {
+                    setProperty(options, name, this.defaults[name].call(this, options));
+                }
+                break;
+            // 把默认值追加到options中
+            case "append": {
+                let oldValue = getProperty(options, name);
+                if (!Array.isArray(oldValue)) {
+                    oldValue = [];
+                }
+                oldValue.push(...this.defaults[name]);
+                setProperty(options, name, oldValue);
+                break;
+            }
+            default:
+                throw new Error(
+                    "OptionsDefaulter cannot process " + this.config[name]
+                );
+        }
+    }
+    return options;
+}
+```
+
+4. 创建`compiler`实例。`context`为当前工作目录，`options`也会有`entry`入口文件。
+
+```javaScript
 compiler = new Compiler(options.context);
 compiler.options = options;
 ```
 
-4. 获得`node`环境的能力——读写与watcher的能力，同时这个在`beforeRun`挂载钩子。
+5. 获得`node`环境的能力——读写与watcher的能力，同时这个在`beforeRun`挂载钩子。
 
 ```javaScript
 new NodeEnvironmentPlugin({
@@ -151,7 +223,7 @@ class NodeEnvironmentPlugin {
     }
 
     apply(compiler) {
-        // 使用node console
+        // 日志输出-使用node console
         compiler.infrastructureLogger = createConsoleLogger(
             Object.assign(
                 {
@@ -162,16 +234,18 @@ class NodeEnvironmentPlugin {
                 this.options.infrastructureLogging
             )
         );
+        // 文件文件夹下的文件
         compiler.inputFileSystem = new CachedInputFileSystem(
             new NodeJsInputFileSystem(),
             60000
         );
         const inputFileSystem = compiler.inputFileSystem;
+        // 创建文件夹 文件 link等能力
         compiler.outputFileSystem = new NodeOutputFileSystem();
         compiler.watchFileSystem = new NodeWatchFileSystem(
             compiler.inputFileSystem
         );
-        // 挂载beforeRun钩子
+        // 挂载beforeRun钩子，在执行时清除缓存
         compiler.hooks.beforeRun.tap("NodeEnvironmentPlugin", compiler => {
             if (compiler.inputFileSystem === inputFileSystem) inputFileSystem.purge();
         });
@@ -179,7 +253,7 @@ class NodeEnvironmentPlugin {
 }
 ```
 
-5. 应用参数中的插件
+6. 挂载参数中的插件
 
 ```javaScript
 // 此处的插件只有 HtmlWebpackPlugin
@@ -189,22 +263,72 @@ if (options.plugins && Array.isArray(options.plugins)) {
             plugin.call(compiler, compiler);
         } else {
             // 应用插件HtmlWebpackPlugin
+            // 在make、emit阶段挂载HtmlWebpackPlugin
             plugin.apply(compiler);
         }
     }
 }
 ```
 
-6. 执行`environment`与`afterEnvironment`的钩子
+7. 执行`environment`与`afterEnvironment`的钩子, 就本例子来说，暂时没有具体钩子触发。`new WebpackOptionsApply().process`应用了很多插件。
 
 ```javaScript
 compiler.hooks.environment.call();
 compiler.hooks.afterEnvironment.call();
-// 此处挂载 SingleEntryPlugin 钩子到make上
 compiler.options = new WebpackOptionsApply().process(options, compiler);
 ```
 
-7. 如果`callback`，则直接执行`compiler.run`，否则只暴露`compiler`。
+`target`为`web`时，应用的插件有很多，大都是能力插件。还有挂载`SingleEntryPlugin`钩子到make上。
+
+```javaScript
+new JsonpTemplatePlugin().apply(compiler);
+new FetchCompileWasmTemplatePlugin({
+    mangleImports: options.optimization.mangleWasmImports
+}).apply(compiler);
+new FunctionModulePlugin().apply(compiler);
+new NodeSourcePlugin(options.node).apply(compiler);
+new LoaderTargetPlugin(options.target).apply(compiler);
+
+// ... devtool的处理插件
+
+new JavascriptModulesPlugin().apply(compiler);
+new JsonModulesPlugin().apply(compiler);
+new WebAssemblyModulesPlugin({
+    mangleImports: options.optimization.mangleWasmImports
+}).apply(compiler);
+
+new EntryOptionPlugin().apply(compiler);
+new JavascriptModulesPlugin().apply(compiler);
+new JsonModulesPlugin().apply(compiler);
+new WebAssemblyModulesPlugin({
+    mangleImports: options.optimization.mangleWasmImports
+}).apply(compiler);
+
+new EntryOptionPlugin().apply(compiler);
+new CompatibilityPlugin().apply(compiler);
+new HarmonyModulesPlugin(options.module).apply(compiler);
+new AMDPlugin(options.module, options.amd || {}).apply(compiler);
+new RequireJsStuffPlugin().apply(compiler);
+new CommonJsPlugin(options.module).apply(compiler);
+new LoaderPlugin().apply(compiler);
+new NodeStuffPlugin(options.node).apply(compiler);
+new CommonJsStuffPlugin().apply(compiler);
+new APIPlugin().apply(compiler);
+new ConstPlugin().apply(compiler);
+new UseStrictPlugin().apply(compiler);
+new RequireIncludePlugin().apply(compiler);
+new RequireEnsurePlugin().apply(compiler);
+new RequireContextPlugin(
+    options.resolve.modules,
+    options.resolve.extensions,
+    options.resolve.mainFiles
+).apply(compiler);
+new ImportPlugin(options.module).apply(compiler);
+new SystemPlugin(options.module).apply(compiler);
+// ...
+```
+
+8. 如果`callback`，则直接执行`compiler.run`，否则只暴露`compiler`。
 
 ```javaScript
 if (callback) {
@@ -221,7 +345,7 @@ if (callback) {
 }
 ```
 
-8. 把默认参数、node环境能力等挂载到`webpack`上。
+9. 把默认参数、node环境能力等挂载到`webpack`上。
 
 ```javaScript
 webpack.WebpackOptionsDefaulter = WebpackOptionsDefaulter;
@@ -257,6 +381,8 @@ run(callback) {
     const finalCallback = (err, stats) => {
         // 回调
     };
+    // 编译完成的回调
+    const onCompiled = (err, compilation) => {}
     this.hooks.beforeRun.callAsync(this, err => {
         if (err) return finalCallback(err);
         this.hooks.run.callAsync(this, err => {
@@ -269,6 +395,10 @@ run(callback) {
     });
 }
 ```
+
+`beforeRun`执行的主要钩子函数为`NodeEnvironmentPlugin`, 获取node能力。`run`主要是执行的`CachePlugin`，会把编译过程的缓存与`compilation`进行关联。
+
+编译过的话，`readRecords`是读取编译记录。
 
 ```javaScript
 // readRecords
@@ -295,7 +425,78 @@ readRecords(callback) {
 }
 ```
 
-在`compile()`时，会先后执行`beforeCompile`/`compile.call`/`make.callAsync`/`compilation.finish`/`compilation.seal`/`afterCompile.callAsync/shouldEmit/this.emitAssets`。这与之前`beforeRun`时触发的函数构成了整个`webpack`执行流程。
+在理解后面源码时，得先理解下`NormalModuleFactory`。它是一个构件模块的类，它通过`create`方法来创造模块，对依赖进行分析，递归加载模块。`loaders`会存放在`ruleSet`。
+
+```javaScript
+class NormalModuleFactory extends Tapable {
+    constructor(context, resolverFactory, options) {
+        super();
+        this.hooks = {
+            resolver: new SyncWaterfallHook(["resolver"]),
+            factory: new SyncWaterfallHook(["factory"]),
+            beforeResolve: new AsyncSeriesWaterfallHook(["data"]),
+            afterResolve: new AsyncSeriesWaterfallHook(["data"]),
+            createModule: new SyncBailHook(["data"]),
+            module: new SyncWaterfallHook(["module", "data"]),
+            createParser: new HookMap(() => new SyncBailHook(["parserOptions"])),
+            parser: new HookMap(() => new SyncHook(["parser", "parserOptions"])),
+            createGenerator: new HookMap(
+                () => new SyncBailHook(["generatorOptions"])
+            ),
+            generator: new HookMap(
+                () => new SyncHook(["generator", "generatorOptions"])
+            )
+        };
+        this.ruleSet = new RuleSet(options.defaultRules.concat(options.rules));
+    }
+
+    create(data, callback) {
+        // 依赖模块
+        const dependencies = data.dependencies;
+        const cacheEntry = dependencyCache.get(dependencies[0]);
+        if (cacheEntry) return callback(null, cacheEntry);
+        const context = data.context || this.context;
+        const resolveOptions = data.resolveOptions || EMPTY_RESOLVE_OPTIONS;
+        // request 表示依赖加载地址 非js文件会补充解析模块地址。比如入口文件为
+        //"/Users/sampan/doc/work/github/cli/node_modules/html-webpack-plugin/lib/loader.js!/Users/sampan/doc/work/github/cli/index.html"
+        // 而入口文件直接为"/Users/sampan/doc/work/github/cli/src/main.js"
+        const request = dependencies[0].request;
+        const contextInfo = data.contextInfo || {};
+        this.hooks.beforeResolve.callAsync(
+            {
+                contextInfo,
+                resolveOptions,
+                context,
+                request,
+                dependencies
+            },
+            // result 表示模块对象 模块路径 使用解析模块
+            (err, result) => {
+                const factory = this.hooks.factory.call(null);
+                factory(result, (err, module) => {
+                    if (module && this.cachePredicate(module)) {
+                        for (const d of dependencies) {
+                            dependencyCache.set(d, module);
+                        }
+                    }
+                    callback(null, module);
+                });
+            }
+        );
+    }
+
+    resolveRequestArray(contextInfo, context, array, resolver, callback) {
+    }
+
+    getParser(type, parserOptions) {
+    }
+
+    createParser(type, parserOptions = {}) {
+    }
+}
+```
+
+`run`方法会执行`compile`。在`compile()`时，会先后执行`beforeCompile`/`compile.call`/`make.callAsync`/`compilation.finish`/`compilation.seal`/`afterCompile.callAsync/shouldEmit/this.emitAssets`。这与之前`beforeRun`时触发的函数构成了整个`webpack`执行流程。
 
 ```javaScript
 // compile
@@ -397,7 +598,7 @@ const params = {
 };
 ```
 
-`normalModuleFactory`与`contextModuleFactory`都是基于`tapable`的`module`工厂。
+`normalModuleFactory`与`contextModuleFactory`都是基于`tapable`的`module`工厂。大部分用到的模块都是`normalModuleFactory`。
 
 #### newCompilation
 
@@ -417,15 +618,338 @@ newCompilation(params) {
 }
 ```
 
-`newcompilation`也是继承`tapable`。`compile`可以理解为编译器，控制着整个流程。而`compilation`则是一个编译对象，拥有整个过程产生的一切对象。
+`newcompilation`也是继承`tapable`。`compile`可以理解为编译器，控制着整个流程。而`compilation`则是一个编译对象，拥有整个过程产生的一切对象`build->seal`。
+
+```javaScript
+class Compilation extends Tapable {
+    constructor(compiler) {
+        // 钩子管理器
+        this.hooks = {
+        };
+        // webpack 实例
+        this.compiler = compiler;
+        // 编译性能
+        this.semaphore = new Semaphore(options.parallelism || 100);
+    }
+
+    /**
+        * @typedef {Object} AddModuleResult
+        * @property {Module} module the added or existing module
+        * @property {boolean} issuer was this the first request for this module
+        * @property {boolean} build should the module be build
+        * @property {boolean} dependencies should dependencies be walked
+        */
+    addModule(module, cacheGroup) {
+        return {
+            module: module,
+            issuer: true,
+            build: true,
+            dependencies: true
+        };
+    }
+    buildModule(module, optional, origin, dependencies, thisCallback) {
+    }
+    _addModuleChain(context, dependency, onModule, callback) {
+    }
+    addEntry(context, entry, name, callback) {
+    }
+    seal(callback) {
+    }
+    addChunk(name) {
+    }
+    emitAsset(file, source, assetInfo = {}) {
+    }
+}
+```
 
 
 #### make.callAsync
 
 `make`则是开始进行编译，会先后触发`HtmlWebpackPlugin`与`SingleEntryPlugin`钩子。
 
-`SingleEntryPlugin`钩子会触发`compilation.addEntry`，`addEntry`主要是调用了`this._addModuleChain`
+`SingleEntryPlugin`钩子会触发`compilation.addEntry`，`addEntry`主要是调用了`this._addModuleChain`。它的入参：
 
+`context`是入口文件等信息
+
+`Dependency`是指依赖模块——SingleEntryDependency的实例。
+
+`onModule`是模块放入entry中
+
+```javaScript
+// 添加模块 执行build
+_addModuleChain(context, dependency, onModule, callback) {
+    // Dep 是获得依赖模块的class -》class SingleEntryDependency extends ModuleDependency { … }
+    const Dep = /** @type {DepConstructor} */ (dependency.constructor);
+    // 是依赖的moduleFactory
+    const moduleFactory = this.dependencyFactories.get(Dep);
+    // Semaphore是一个信标，用来控制webpack make 占用资源的数量， 默认100个。
+    this.semaphore.acquire(() => {
+        moduleFactory.create(
+            {
+                contextInfo: {
+                    issuer: "",
+                    compiler: this.compiler.name
+                },
+                context: context,
+                dependencies: [dependency]
+            },
+            // module 是 normalModuleFactory create 以后得一个模块。是一个包含模块解析路径等信息。
+            (err, module) => {
+                if (err) {
+                    this.semaphore.release();
+                    return errorAndCallback(new EntryModuleNotFoundError(err));
+                }
+                // 添加模块到缓存
+                const addModuleResult = this.addModule(module);
+                module = addModuleResult.module;
+                // 把模块添加到compilation.entery中
+                onModule(module);
+                dependency.module = module;
+                module.addReason(null, dependency);
+                const afterBuild = () => {
+                    if (addModuleResult.dependencies) {
+                        this.processModuleDependencies(module, err => {
+                            if (err) return callback(err);
+                            callback(null, module);
+                        });
+                    } else {
+                        return callback(null, module);
+                    }
+                };
+                if (addModuleResult.issuer) {
+                    if (currentProfile) {
+                        module.profile = currentProfile;
+                    }
+                }
+                // 执行build
+                if (addModuleResult.build) {
+                    this.buildModule(module, false, null, null, err => {
+                        if (err) {
+                            this.semaphore.release();
+                            return errorAndCallback(err);
+                        }
+
+                        if (currentProfile) {
+                            const afterBuilding = Date.now();
+                            currentProfile.building = afterBuilding - afterFactory;
+                        }
+
+                        this.semaphore.release();
+                        afterBuild();
+                    });
+                } else {
+                    this.semaphore.release();
+                    this.waitForBuildingFinished(module, afterBuild);
+                }
+            }
+        );
+    });
+}
+```
+
+#### seal
+
+`seal`中，主要是对进行压缩、hash、产出等操作。
+
+```javaScript
+seal(callback) {
+    this.hooks.seal.call();
+
+    while (
+        this.hooks.optimizeDependenciesBasic.call(this.modules) ||
+        this.hooks.optimizeDependencies.call(this.modules) ||
+        this.hooks.optimizeDependenciesAdvanced.call(this.modules)
+    ) {
+        /* empty */
+    }
+    this.hooks.afterOptimizeDependencies.call(this.modules);
+
+    this.hooks.beforeChunks.call();
+    for (const preparedEntrypoint of this._preparedEntrypoints) {
+        const module = preparedEntrypoint.module;
+        const name = preparedEntrypoint.name;
+        const chunk = this.addChunk(name);
+        const entrypoint = new Entrypoint(name);
+        entrypoint.setRuntimeChunk(chunk);
+        entrypoint.addOrigin(null, name, preparedEntrypoint.request);
+        this.namedChunkGroups.set(name, entrypoint);
+        this.entrypoints.set(name, entrypoint);
+        this.chunkGroups.push(entrypoint);
+
+        GraphHelpers.connectChunkGroupAndChunk(entrypoint, chunk);
+        GraphHelpers.connectChunkAndModule(chunk, module);
+
+        chunk.entryModule = module;
+        chunk.name = name;
+
+        this.assignDepth(module);
+    }
+    buildChunkGraph(
+        this,
+        /** @type {Entrypoint[]} */ (this.chunkGroups.slice())
+    );
+    this.sortModules(this.modules);
+    this.hooks.afterChunks.call(this.chunks);
+
+    this.hooks.optimize.call();
+
+    while (
+        this.hooks.optimizeModulesBasic.call(this.modules) ||
+        this.hooks.optimizeModules.call(this.modules) ||
+        this.hooks.optimizeModulesAdvanced.call(this.modules)
+    ) {
+        /* empty */
+    }
+    this.hooks.afterOptimizeModules.call(this.modules);
+
+    while (
+        this.hooks.optimizeChunksBasic.call(this.chunks, this.chunkGroups) ||
+        this.hooks.optimizeChunks.call(this.chunks, this.chunkGroups) ||
+        this.hooks.optimizeChunksAdvanced.call(this.chunks, this.chunkGroups)
+    ) {
+        /* empty */
+    }
+    this.hooks.afterOptimizeChunks.call(this.chunks, this.chunkGroups);
+
+    this.hooks.optimizeTree.callAsync(this.chunks, this.modules, err => {
+        if (err) {
+            return callback(err);
+        }
+
+        this.hooks.afterOptimizeTree.call(this.chunks, this.modules);
+
+        while (
+            this.hooks.optimizeChunkModulesBasic.call(this.chunks, this.modules) ||
+            this.hooks.optimizeChunkModules.call(this.chunks, this.modules) ||
+            this.hooks.optimizeChunkModulesAdvanced.call(this.chunks, this.modules)
+        ) {
+            /* empty */
+        }
+        this.hooks.afterOptimizeChunkModules.call(this.chunks, this.modules);
+
+        const shouldRecord = this.hooks.shouldRecord.call() !== false;
+
+        this.hooks.reviveModules.call(this.modules, this.records);
+        this.hooks.optimizeModuleOrder.call(this.modules);
+        this.hooks.advancedOptimizeModuleOrder.call(this.modules);
+        this.hooks.beforeModuleIds.call(this.modules);
+        this.hooks.moduleIds.call(this.modules);
+        this.applyModuleIds();
+        this.hooks.optimizeModuleIds.call(this.modules);
+        this.hooks.afterOptimizeModuleIds.call(this.modules);
+
+        this.sortItemsWithModuleIds();
+
+        this.hooks.reviveChunks.call(this.chunks, this.records);
+        this.hooks.optimizeChunkOrder.call(this.chunks);
+        this.hooks.beforeChunkIds.call(this.chunks);
+        this.applyChunkIds();
+        this.hooks.optimizeChunkIds.call(this.chunks);
+        this.hooks.afterOptimizeChunkIds.call(this.chunks);
+
+        this.sortItemsWithChunkIds();
+
+        if (shouldRecord) {
+            this.hooks.recordModules.call(this.modules, this.records);
+            this.hooks.recordChunks.call(this.chunks, this.records);
+        }
+
+        this.hooks.beforeHash.call();
+        this.createHash();
+        this.hooks.afterHash.call();
+
+        if (shouldRecord) {
+            this.hooks.recordHash.call(this.records);
+        }
+
+        this.hooks.beforeModuleAssets.call();
+        // 创建资源输出
+        this.createModuleAssets();
+        if (this.hooks.shouldGenerateChunkAssets.call() !== false) {
+            this.hooks.beforeChunkAssets.call();
+            this.createChunkAssets();
+        }
+        this.hooks.additionalChunkAssets.call(this.chunks);
+        this.summarizeDependencies();
+        if (shouldRecord) {
+            this.hooks.record.call(this, this.records);
+        }
+
+        this.hooks.additionalAssets.callAsync(err => {
+            if (err) {
+                return callback(err);
+            }
+            this.hooks.optimizeChunkAssets.callAsync(this.chunks, err => {
+                if (err) {
+                    return callback(err);
+                }
+                this.hooks.afterOptimizeChunkAssets.call(this.chunks);
+                this.hooks.optimizeAssets.callAsync(this.assets, err => {
+                    if (err) {
+                        return callback(err);
+                    }
+                    this.hooks.afterOptimizeAssets.call(this.assets);
+                    if (this.hooks.needAdditionalSeal.call()) {
+                        this.unseal();
+                        return this.seal(callback);
+                    }
+                    return this.hooks.afterSeal.callAsync(callback);
+                });
+            });
+        });
+    });
+}
+```
+
+`afterSeal`执行`cachePlugin`。
+
+最后执行`oncompiled`, 主要是打包资源到输出目录。
+
+```javaScript
+if (this.hooks.shouldEmit.call(compilation) === false) {
+    const stats = new Stats(compilation);
+    stats.startTime = startTime;
+    stats.endTime = Date.now();
+    this.hooks.done.callAsync(stats, err => {
+        if (err) return finalCallback(err);
+        return finalCallback(null, stats);
+    });
+    return;
+}
+// 触发资源
+this.emitAssets(compilation, err => {
+    if (err) return finalCallback(err);
+
+    if (compilation.hooks.needAdditionalPass.call()) {
+        compilation.needAdditionalPass = true;
+
+        const stats = new Stats(compilation);
+        stats.startTime = startTime;
+        stats.endTime = Date.now();
+        this.hooks.done.callAsync(stats, err => {
+            if (err) return finalCallback(err);
+
+            this.hooks.additionalPass.callAsync(err => {
+                if (err) return finalCallback(err);
+                this.compile(onCompiled);
+            });
+        });
+        return;
+    }
+    // 写入记录 并写入输出文件夹
+    this.emitRecords(err => {
+        if (err) return finalCallback(err);
+
+        const stats = new Stats(compilation);
+        stats.startTime = startTime;
+        stats.endTime = Date.now();
+        this.hooks.done.callAsync(stats, err => {
+            if (err) return finalCallback(err);
+            return finalCallback(null, stats);
+        });
+    });
+});
+```
 
 ## webpack性能优化
 
