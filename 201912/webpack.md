@@ -108,7 +108,7 @@ if (firstOptions.watch || options.watch) {
 
 首先，先把最终的流程图放一下：
 
-![avatar](./images/1.png)
+![webpack](./images/webpack.png)
 
 在`webpack-cli`中，`require('wabpack')`是引用的`webpack`，它的入口文件时`webpack/lib/webpack.js`。在`webpack.js`中主要做了以下事情：
 
