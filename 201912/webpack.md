@@ -106,6 +106,10 @@ if (firstOptions.watch || options.watch) {
 }
 ```
 
+首先，先把最终的流程图放一下：
+
+![avatar](./images/1.png)
+
 在`webpack-cli`中，`require('wabpack')`是引用的`webpack`，它的入口文件时`webpack/lib/webpack.js`。在`webpack.js`中主要做了以下事情：
 
 1. 验证`webpack`参数是否正确
@@ -493,6 +497,100 @@ class NormalModuleFactory extends Tapable {
 
     createParser(type, parserOptions = {}) {
     }
+
+    doBuild(options, compilation, resolver, fs, callback) {
+        const loaderContext = this.createLoaderContext(
+            resolver,
+            options,
+            compilation,
+            fs
+        );
+        // 应用loader
+        runLoaders(
+            {
+                resource: this.resource,
+                loaders: this.loaders,
+                context: loaderContext,
+                readResource: fs.readFile.bind(fs)
+            },
+            (err, result) => {
+                if (result) {
+                    this.buildInfo.cacheable = result.cacheable;
+                    this.buildInfo.fileDependencies = new Set(result.fileDependencies);
+                    this.buildInfo.contextDependencies = new Set(
+                        result.contextDependencies
+                    );
+                }
+
+                const resourceBuffer = result.resourceBuffer;
+                const source = result.result[0];
+                const sourceMap = result.result.length >= 1 ? result.result[1] : null;
+                const extraInfo = result.result.length >= 2 ? result.result[2] : null;
+
+                if (!Buffer.isBuffer(source) && typeof source !== "string") {
+                    const currentLoader = this.getCurrentLoader(loaderContext, 0);
+                    const err = new Error(
+                        `Final loader (${
+                            currentLoader
+                                ? compilation.runtimeTemplate.requestShortener.shorten(
+                                        currentLoader.loader
+                                    )
+                                : "unknown"
+                        }) didn't return a Buffer or String`
+                    );
+                    const error = new ModuleBuildError(this, err);
+                    return callback(error);
+                }
+                // 内容赋值到_source
+                this._source = this.createSource(
+                    this.binary ? asBuffer(source) : asString(source),
+                    resourceBuffer,
+                    sourceMap
+                );
+                this._sourceSize = null;
+                // 挂载_ast
+                this._ast =
+                    typeof extraInfo === "object" &&
+                    extraInfo !== null &&
+                    extraInfo.webpackAST !== undefined
+                        ? extraInfo.webpackAST
+                        : null;
+                return callback();
+            }
+        );
+    }
+
+    build(options, compilation, resolver, fs, callback) {
+
+        return this.doBuild(options, compilation, resolver, fs, err => {
+            this._cachedSources.clear();
+            try {
+                // 通过parse 解析 源码到 module._source
+                const result = this.parser.parse(
+                    this._ast || this._source.source(),
+                    {
+                        current: this,
+                        module: this,
+                        compilation: compilation,
+                        options: options
+                    },
+                    (err, result) => {
+                        if (err) {
+                            handleParseError(err);
+                        } else {
+                            handleParseResult(result);
+                        }
+                    }
+                );
+                if (result !== undefined) {
+                    // parse is sync
+                    handleParseResult(result);
+                }
+            } catch (e) {
+                handleParseError(e);
+            }
+        });
+    }
 }
 ```
 
@@ -721,7 +819,7 @@ _addModuleChain(context, dependency, onModule, callback) {
                         module.profile = currentProfile;
                     }
                 }
-                // 执行build
+                // 执行build 此时源码已经读取出
                 if (addModuleResult.build) {
                     this.buildModule(module, false, null, null, err => {
                         if (err) {
@@ -749,7 +847,7 @@ _addModuleChain(context, dependency, onModule, callback) {
 
 #### seal
 
-`seal`中，主要是对进行压缩、hash、产出等操作。
+`seal`中，主要是对进行优化等操作。
 
 ```javaScript
 seal(callback) {
@@ -916,7 +1014,7 @@ if (this.hooks.shouldEmit.call(compilation) === false) {
     });
     return;
 }
-// 触发资源
+// 输出所有资源到dist
 this.emitAssets(compilation, err => {
     if (err) return finalCallback(err);
 
@@ -936,7 +1034,7 @@ this.emitAssets(compilation, err => {
         });
         return;
     }
-    // 写入记录 并写入输出文件夹
+    // 写入记录
     this.emitRecords(err => {
         if (err) return finalCallback(err);
 
