@@ -1049,9 +1049,68 @@ this.emitAssets(compilation, err => {
 });
 ```
 
+## sourcemap
+
+`webpack`的`source-map`是通过`devtool`来设置的。分别对应以下几个值：
+
+1, `none` 不产生`sourcemap`。一般用于生产环境，构建速度最快。
+
+2，`eval` 每个模块会封装到`eval`，在末位追加注释。
+
+```javaScript
+function(module,exports,__webpack_require__){
+eval(
+      ...
+//# sourceURL=webpack:///./src/static/css/app.less?./~/.npminstall/css-loader/0.23.1/css-loader!./~/.npminstall/postcss-loader/1.1.1/postcss-loader!./~/.npminstall/less-loader/2.2.3/less-loader'
+    )
+  },
+```
+
+3，`source-map` 生成一个`sourcemap`文件，在末位也有注释。
+
+```javaScript
+webpackJsonp([1],[
+function(e,t,i){...},
+function(e,t,i){...},
+function(e,t,i){...},
+function(e,t,i){...},
+  ...
+])//# sourceMappingURL=index.js.map
+```
+
+4，`hidden-source-map`与`source-map`一样，只不过句末没有注释。
+
+5，`inline-source-map`是`sourcemap`的内容以`DataURL`的形势放在末尾。这种情况下`bundle`比较大。
+
+6，`cheap-source-map`与`source-map`一样，但是生成的`source-map`代码比较少，少了列信息。
+
+7, `cheap-module-source-map`比`cheap-source-map`又少了`sourcesContent`
+
+最后：
+
+1, `cheap`可以提供`sourcemap`生成效率
+
+2，`eval`可大幅度提供持续构建效率。
+
+3，`module`可支持`babel`预编译工具。
+
+4，生产环境建议使用`cheap-module-source-map`，开发环境`cheap-module-eval-source-map`。
+
 ## webpack性能优化
 
+1，根据打包流程，虽然可以做`treeshaking`，但是总要依赖分析，所以最好手动直接在项目代码中删除未用到模块，减少打包时间。
+
+2，增量构建，缓存第一次打包结果。
+
+3，使用HappyPack, 多进程打包
+
+4，resolve缩小文件搜索范围
+
+5，ParallelUglifyPlugin多进程压缩
+
 ## 插件机制
+
+## Dllplugin
 
 ## 插件编写
 
