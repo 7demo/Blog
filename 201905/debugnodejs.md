@@ -33,5 +33,18 @@ e3a46eec51a 8 Script:~ cluster.js:1
 
 执行`~/FlameGraph/stackcollapse-perf.pl --kernel < /tmp/perf.stacks | ~/FlameGraph/flamegraph.pl --color=js --hash> /tmp/flamegraph.svg`生成svg文件。
 
-![flamegraph](./images/flamegraph.svg?sanitize=true)
 <img src="./images/flamegraph.svg?sanitize=true">
+
+1，每一块代表一个函数
+
+2，Y轴代表函数栈的深度，top代表占据cpu的函数。
+
+3，x轴仅代表字母顺序。但是函数块的宽度代表占用cpu的时间。越宽代表使用cpu约长或者频繁。
+
+4，多线程取样可能会超过运行时间。
+
+上图可以看出`node::crypto::PBKDF2`占用时间比较多。如果我们在代码中把同步改为异步重新生成火焰图。
+
+<img src="./images/flamegraph_async.svg?sanitize=true">
+
+可以看到js代码中的宽度块所占宽度大大减少，同时多了一个`node:BackroundRunner`，是采用线程池异步执行来优化了性能。
