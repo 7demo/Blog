@@ -4,7 +4,7 @@
 
 ### perf, FlameGraph
 
-`perf`是`Linux Kernal`自带性能分析工具。能进行函数级与指令级的热点查找。centos系统直接`yum install -y perf`进行安装。
+`perf`是`Linux Kernal`自带性能分析工具。它是基于内核源码的一些`hook`——`Tracepoint`, 能进行函数级与指令级的热点查找。centos系统直接`yum install -y perf`进行安装。
 
 我们node运行`node --perf_basic_prof app.js &`(加&会进入后台运行)，会在`/tmp/`下生产一个`perf-#{id}.map`的文件。
 
@@ -32,3 +32,6 @@ e3a46eec51a 8 Script:~ cluster.js:1
 执行`perf script > perf.stacks`生成`perf.stacks`。
 
 执行`~/FlameGraph/stackcollapse-perf.pl --kernel < /tmp/perf.stacks | ~/FlameGraph/flamegraph.pl --color=js --hash> /tmp/flamegraph.svg`生成svg文件。
+
+![flamegraph](./images/flamegraph.svg?sanitize=true)
+<img src="./images/flamegraph.svg?sanitize=true">
