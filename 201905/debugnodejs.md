@@ -264,4 +264,37 @@ Shared libraries]:
 
 另外还有可以使用[v8](https://github.com/v8/v8)的`v8/tools/profview/index.html`页面来ui化。
 
+---
 
+## 内存
+
+### Core & Core Dump
+
+`Core`表示记忆体，`Core Dump`是程序异常终止和崩溃，操作系统把当时的内存状态记录下来，保存一个文件中——内存快照。包括内存信息、寄存器信息、操作系统状态信息。
+
+`gcore`可以不重启程序而dump特定进程的`core`文件——`gcore [-o filename] file`。
+
+// 需要安装 llnode
+
+
+### heapdump
+
+`heapdump`是`dump V8`堆信息的工具。可以用于分析内存泄漏, 在运营程序代码时，执行`kill -USR2 'pgrep -n node'`平滑重启，在重启过程中生成两个`heapsnapshot`文件。
+
+使用`chrome Devtools->memory->load`，<strong>按顺序依次加载</strong>生成的`heapsnapshot`。关于堆快照，有4个选项：
+
+1，`Summary`以构造函数名分类显示
+
+2，`Comparison`比较快照间的差异
+
+3，`Containment`查看GC路径
+
+4，`Statistics` 查看内存占用信息
+
+在`Summary`选项中，`Contructor`是构造函数，`Distance`是到GC根对象的距离，`Objects count`是对象个数，`Shallow Size`是对象自身的大小，不包括引用的对象，`Retained Size`是自身大小与引用对象的大小，也是GC之后能回收的内存大小。
+
+<img src="./images/heapdump1.png">
+
+根据上述代码，可以看到闭包问题：`originLeakObject/leakObject`。
+
+也可以选择`Comparison`来看前后两个快照的对比。
