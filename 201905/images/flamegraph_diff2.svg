@@ -1,0 +1,1501 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="1270" onload="init(evt)" viewBox="0 0 1200 1270" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+	}
+
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+		}
+		else if (e.target.id == "unzoom") unzoom();
+		else if (e.target.id == "search") search_prompt();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	}, false)
+
+	// functions
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+		return;
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+	}
+
+	// search
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)", "");
+			if (term != null) {
+				search(term)
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		var re = new RegExp(term);
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="1270.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="1253" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="matched" x="1090.00" y="1253" > </text>
+<g id="frames">
+<g >
+<title>LazyCompile:*first /srv/test/node_modules/ee-first/index.js:24 (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="821" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="831.5" >La..</text>
+</g>
+<g >
+<title>v8::Function::Call (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="981" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="991.5" >v8::Function::Call</text>
+</g>
+<g >
+<title>Builtin:ArgumentsAdaptorTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="693" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="703.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::Iterate (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="693" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="703.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Execution::Call (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="965" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="975.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::FunctionCallbackArguments::Call (1 samples, 2.63%; 0.00%)</title><rect x="941.6" y="629" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="944.58" y="639.5" >v8..</text>
+</g>
+<g >
+<title>ip_local_deliver_finish (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="165" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="175.5" >ip_loc..</text>
+</g>
+<g >
+<title>LazyCompile:*dispatch /srv/test/node_modules/koa-compose/index.js:35 (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="725" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="735.5" >La..</text>
+</g>
+<g >
+<title>[unknown] (4 samples, 10.53%; 0.00%)</title><rect x="10.0" y="1189" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="13.00" y="1199.5" >[unknown]</text>
+</g>
+<g >
+<title>ip_finish_output (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="373" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="383.5" >ip_fin..</text>
+</g>
+<g >
+<title>LazyCompile:*_tickCallback internal/process/next_tick.js:151 (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="917" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="927.5" >LazyCompile:*_tickCallback internal/process/next_t..</text>
+</g>
+<g >
+<title>v8::internal::Builtin_ObjectSetPrototypeOf (2 samples, 5.26%; 0.00%)</title><rect x="506.8" y="693" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="509.84" y="703.5" >v8::in..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="709" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="719.5" >Bu..</text>
+</g>
+<g >
+<title>Builtin:JSEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="517" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="527.5" >Bu..</text>
+</g>
+<g >
+<title>node::InternalMakeCallback (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="997" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="1007.5" >no..</text>
+</g>
+<g >
+<title>LazyCompile:*dispatch /srv/test/node_modules/koa-compose/index.js:35 (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="757" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="767.5" >La..</text>
+</g>
+<g >
+<title>node::Start (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1173" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1183.5" >node::Start</text>
+</g>
+<g >
+<title>LazyCompile:* /srv/test/node_modules/paloma/router.js:33 (8 samples, 21.05%; +2.63%)</title><rect x="320.5" y="821" width="248.4" height="15.0" fill="rgb(255,140,140)" rx="2" ry="2" />
+<text  x="323.53" y="831.5" >LazyCompile:* /srv/test/node_modu..</text>
+</g>
+<g >
+<title>LazyCompile:* /srv/test/node_modules/koa-compose/index.js:31 (2 samples, 5.26%; 0.00%)</title><rect x="227.4" y="805" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="815.5" >LazyCo..</text>
+</g>
+<g >
+<title>node::InternalCallbackScope::Close (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="1013" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="1023.5" >node::InternalCallbackScope::Close</text>
+</g>
+<g >
+<title>ip_finish_output (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="373" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="383.5" >ip_fin..</text>
+</g>
+<g >
+<title>vfs_write (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="565" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="575.5" >vfs_wr..</text>
+</g>
+<g >
+<title>Stub:ArraySingleArgumentConstructorStub (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="661" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="671.5" >St..</text>
+</g>
+<g >
+<title>v8::internal::ItemParallelJob::Task::RunInternal (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="533" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="543.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Runtime_AllocateInNewSpace (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="773" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="783.5" >v8..</text>
+</g>
+<g >
+<title>__netif_receive_skb_core (2 samples, 5.26%; +2.63%)</title><rect x="972.6" y="229" width="62.1" height="15.0" fill="rgb(255,140,140)" rx="2" ry="2" />
+<text  x="975.63" y="239.5" >__neti..</text>
+</g>
+<g >
+<title>ip_local_out_sk (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="405" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="415.5" >ip_loc..</text>
+</g>
+<g >
+<title>node::StreamBase::JSMethod&lt;node::LibuvStreamWrap, &amp; (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="677" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="687.5" >node::..</text>
+</g>
+<g >
+<title>__local_bh_enable_ip (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="341" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="351.5" >__loca..</text>
+</g>
+<g >
+<title>sock_def_readable (1 samples, 2.63%; 0.00%)</title><rect x="1003.7" y="85" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1006.68" y="95.5" >so..</text>
+</g>
+<g >
+<title>sys_write (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="581" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="591.5" >sys_wr..</text>
+</g>
+<g >
+<title>v8::internal::ObjectHashTable::Put (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="405" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="415.5" >v8..</text>
+</g>
+<g >
+<title>tcp_push (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="485" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="495.5" >tcp_push</text>
+</g>
+<g >
+<title>ip_queue_xmit (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="421" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="431.5" >ip_que..</text>
+</g>
+<g >
+<title>v8::internal::JSObject::MigrateToMap (1 samples, 2.63%; 0.00%)</title><rect x="444.7" y="597" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="447.74" y="607.5" >v8..</text>
+</g>
+<g >
+<title>sock_aio_write (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="533" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="543.5" >sock_a..</text>
+</g>
+<g >
+<title>node::(anonymous namespace)::Parser::on_headers_complete (16 samples, 42.11%; -2.63%)</title><rect x="134.2" y="1029" width="496.9" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="137.21" y="1039.5" >node::(anonymous namespace)::Parser::on_headers_complete</text>
+</g>
+<g >
+<title>tcp_sendmsg (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="501" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="511.5" >tcp_se..</text>
+</g>
+<g >
+<title>LazyCompile:*dispatch /srv/test/node_modules/koa-compose/index.js:35 (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="805" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="815.5" >LazyCompile:*dispatch /srv/test/n..</text>
+</g>
+<g >
+<title>sys_write (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="581" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="591.5" >sys_wr..</text>
+</g>
+<g >
+<title>__tcp_ack_snd_check (1 samples, 2.63%; 0.00%)</title><rect x="972.6" y="101" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="111.5" >__..</text>
+</g>
+<g >
+<title>v8::internal::OptimizingCompileDispatcher::CompileTask::Run (4 samples, 10.53%; 0.00%)</title><rect x="1065.8" y="1157" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1167.5" >v8::internal::O..</text>
+</g>
+<g >
+<title>Stub:JSEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="533" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="543.5" >St..</text>
+</g>
+<g >
+<title>ip_rcv_finish (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="197" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="207.5" >ip_rcv..</text>
+</g>
+<g >
+<title>v8::internal::LookupIterator::ApplyTransitionToDataProperty (1 samples, 2.63%; 0.00%)</title><rect x="444.7" y="613" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="447.74" y="623.5" >v8..</text>
+</g>
+<g >
+<title>call_softirq (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="309" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="319.5" >call_s..</text>
+</g>
+<g >
+<title>tcp_push (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="485" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="495.5" >tcp_push</text>
+</g>
+<g >
+<title>node::Start (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1157" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1167.5" >node::Start</text>
+</g>
+<g >
+<title>v8::internal::Execution::TryCall (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="821" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="831.5" >v8::internal::Execution::TryCall</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="645" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="655.5" >St..</text>
+</g>
+<g >
+<title>__netif_receive_skb_core (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="229" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="239.5" >__neti..</text>
+</g>
+<g >
+<title>tcp_sendmsg (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="501" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="511.5" >tcp_se..</text>
+</g>
+<g >
+<title>mod_timer (1 samples, 2.63%; 0.00%)</title><rect x="972.6" y="53" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="63.5" >mo..</text>
+</g>
+<g >
+<title>LazyCompile:*clearBuffer _stream_writable.js:479 (4 samples, 10.53%; 0.00%)</title><rect x="910.5" y="725" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="913.53" y="735.5" >LazyCompile:*cl..</text>
+</g>
+<g >
+<title>v8::internal::Map::TransitionToDataProperty (1 samples, 2.63%; 0.00%)</title><rect x="475.8" y="597" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="478.79" y="607.5" >v8..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="258.4" y="741" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="261.42" y="751.5" >St..</text>
+</g>
+<g >
+<title>node::InternalMakeCallback (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="1029" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="1039.5" >node::InternalMakeCallback</text>
+</g>
+<g >
+<title>uv_try_write (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="629" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="639.5" >uv_try..</text>
+</g>
+<g >
+<title>process_backlog (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="261" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="271.5" >proces..</text>
+</g>
+<g >
+<title>v8::internal::compiler::Node::RemoveUse (1 samples, 2.63%; -2.63%)</title><rect x="1065.8" y="1045" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1055.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::LocalAllocator::Allocate (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="469" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="479.5" >v8..</text>
+</g>
+<g >
+<title>tcp_write_xmit (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="453" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="463.5" >tcp_wr..</text>
+</g>
+<g >
+<title>v8::internal::HashTable&lt;v8::internal::ObjectHashTable, v8::internal::ObjectHashTableShape&gt;::Rehash (1 samples, 2.63%; -2.63%)</title><rect x="227.4" y="389" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="230.37" y="399.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Factory::NewFillerObject (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="613" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="623.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (2 samples, 5.26%; 0.00%)</title><rect x="227.4" y="837" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="847.5" >Builti..</text>
+</g>
+<g >
+<title>v8::internal::Builtin_ErrorCaptureStackTrace (3 samples, 7.89%; 0.00%)</title><rect x="320.5" y="693" width="93.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="703.5" >v8::interna..</text>
+</g>
+<g >
+<title>node::(anonymous namespace)::Parser::on_message_complete (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="1029" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="1039.5" >no..</text>
+</g>
+<g >
+<title>v8::internal::TranslatedState::Init (1 samples, 2.63%; 0.00%)</title><rect x="382.6" y="613" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="385.63" y="623.5" >v8..</text>
+</g>
+<g >
+<title>operator delete[] (1 samples, 2.63%; -2.63%)</title><rect x="662.1" y="1029" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="665.11" y="1039.5" >op..</text>
+</g>
+<g >
+<title>LazyCompile:* internal/process/promises.js:21 (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="501" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="511.5" >La..</text>
+</g>
+<g >
+<title>__tcp_push_pending_frames (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="469" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="479.5" >__tcp_..</text>
+</g>
+<g >
+<title>LazyCompile:*emit events.js:156 (1 samples, 2.63%; 0.00%)</title><rect x="724.2" y="885" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="727.21" y="895.5" >La..</text>
+</g>
+<g >
+<title>v8::internal::Runtime_KeyedGetProperty (1 samples, 2.63%; 0.00%)</title><rect x="600.0" y="885" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="603.00" y="895.5" >v8..</text>
+</g>
+<g >
+<title>ip_output (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="389" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="399.5" >ip_out..</text>
+</g>
+<g >
+<title>v8::internal::JSObject::MigrateToMap (1 samples, 2.63%; -2.63%)</title><rect x="506.8" y="645" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="509.84" y="655.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*onerror /srv/test/node_modules/koa/lib/context.js:107 (5 samples, 13.16%; 0.00%)</title><rect x="755.3" y="741" width="155.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="751.5" >LazyCompile:*onerro..</text>
+</g>
+<g >
+<title>Builtin:GrowFastSmiOrObjectElements (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="805" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="815.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::Runtime_AllocateInNewSpace (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="629" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="639.5" >v8..</text>
+</g>
+<g >
+<title>tcp_v4_rcv (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="149" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="159.5" >tcp_v4..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (5 samples, 13.16%; 0.00%)</title><rect x="755.3" y="757" width="155.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="767.5" >Builtin:Interpreter..</text>
+</g>
+<g >
+<title>sock_def_readable (1 samples, 2.63%; 0.00%)</title><rect x="879.5" y="85" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="882.47" y="95.5" >so..</text>
+</g>
+<g >
+<title>LazyCompile:*clearBuffer _stream_writable.js:479 (4 samples, 10.53%; 0.00%)</title><rect x="786.3" y="725" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="789.32" y="735.5" >LazyCompile:*cl..</text>
+</g>
+<g >
+<title>v8::internal::JSWeakCollection::Set (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="421" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="431.5" >v8..</text>
+</g>
+<g >
+<title>v8::Object::SetAlignedPointerInInternalField (1 samples, 2.63%; -2.63%)</title><rect x="941.6" y="613" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="944.58" y="623.5" >v8..</text>
+</g>
+<g >
+<title>[libpthread-2.17.so] (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="613" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="623.5" >[libpt..</text>
+</g>
+<g >
+<title>v8::internal::compiler::PipelineImpl::Run&lt;v8::internal::compiler::ComputeSchedulePhase&gt; (1 samples, 2.63%; 0.00%)</title><rect x="1127.9" y="1077" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1130.89" y="1087.5" >v8..</text>
+</g>
+<g >
+<title>tcp_v4_rcv (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="149" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="159.5" >tcp_v4..</text>
+</g>
+<g >
+<title>v8::internal::OptimizedFrame::GetDeoptimizationData (1 samples, 2.63%; -2.63%)</title><rect x="351.6" y="613" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="354.58" y="623.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::JSObject::DefineOwnPropertyIgnoreAttributes (2 samples, 5.26%; 0.00%)</title><rect x="444.7" y="645" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="447.74" y="655.5" >v8::in..</text>
+</g>
+<g >
+<title>LazyCompile:*Socket._writeGeneric net.js:721 (4 samples, 10.53%; -2.63%)</title><rect x="910.5" y="709" width="124.2" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="913.53" y="719.5" >LazyCompile:*So..</text>
+</g>
+<g >
+<title>Builtin:InternalPromiseReject (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="661" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="671.5" >Bu..</text>
+</g>
+<g >
+<title>Builtin:JSEntryTrampoline (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="789" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="799.5" >Builtin:JSEntryTrampoline</text>
+</g>
+<g >
+<title>Builtin:JSEntryTrampoline (15 samples, 39.47%; 0.00%)</title><rect x="165.3" y="933" width="465.8" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="168.26" y="943.5" >Builtin:JSEntryTrampoline</text>
+</g>
+<g >
+<title>v8::internal::compiler::EffectControlLinearizer::ProcessNode (1 samples, 2.63%; 0.00%)</title><rect x="1065.8" y="1061" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1071.5" >v8..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="789" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="799.5" >St..</text>
+</g>
+<g >
+<title>v8::internal::compiler::GraphTrimmer::TrimGraph&lt;__gnu_cxx::__normal_iterator&lt;v8::internal::compiler::Node**, std::vector&lt;v8::internal::compiler::Node*, v8::internal::ZoneAllocator&lt;v8::internal::compiler::Node*&gt; &gt; &gt; &gt; (1 samples, 2.63%; 0.00%)</title><rect x="1096.8" y="1077" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1099.84" y="1087.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::TransitionsAccessor::SearchTransition (1 samples, 2.63%; -2.63%)</title><rect x="475.8" y="581" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="478.79" y="591.5" >v8..</text>
+</g>
+<g >
+<title>__do_softirq (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="293" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="303.5" >__do_s..</text>
+</g>
+<g >
+<title>ip_rcv (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="213" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="223.5" >ip_rcv</text>
+</g>
+<g >
+<title>LazyCompile:*dispatch /srv/test/node_modules/koa-compose/index.js:35 (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="773" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="783.5" >LazyCompile:*dispatch /srv/test/n..</text>
+</g>
+<g >
+<title>ip_rcv_finish (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="197" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="207.5" >ip_rcv..</text>
+</g>
+<g >
+<title>node (38 samples, 100.00%; 0.00%)</title><rect x="10.0" y="1205" width="1180.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="13.00" y="1215.5" >node</text>
+</g>
+<g >
+<title>v8::internal::Heap::Scavenge (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="565" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="575.5" >v8..</text>
+</g>
+<g >
+<title>Stub:CallApiCallbackStub (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="885" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="895.5" >Stub:CallApiCallbackStub</text>
+</g>
+<g >
+<title>net_rx_action (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="277" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="287.5" >net_rx..</text>
+</g>
+<g >
+<title>tcp_transmit_skb (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="437" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="447.5" >tcp_tr..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::PromiseReactionJob (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="837" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="847.5" >v8::internal::Isolate::PromiseReactionJob</text>
+</g>
+<g >
+<title>v8::internal::JSObject::SetPrototype (1 samples, 2.63%; 0.00%)</title><rect x="506.8" y="661" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="509.84" y="671.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*onerror /srv/test/node_modules/koa/lib/application.js:148 (5 samples, 13.16%; 0.00%)</title><rect x="910.5" y="757" width="155.3" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="913.53" y="767.5" >LazyCompile:*onerro..</text>
+</g>
+<g >
+<title>__netif_receive_skb (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="245" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="255.5" >__neti..</text>
+</g>
+<g >
+<title>ip_local_deliver (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="181" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="191.5" >ip_loc..</text>
+</g>
+<g >
+<title>v8::internal::Heap::CollectGarbage (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="597" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="607.5" >v8..</text>
+</g>
+<g >
+<title>uv_try_write (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="629" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="639.5" >uv_try..</text>
+</g>
+<g >
+<title>inet_sendmsg (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="517" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="527.5" >inet_s..</text>
+</g>
+<g >
+<title>v8::internal::BuiltinExitFrame::type (1 samples, 2.63%; -2.63%)</title><rect x="413.7" y="645" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="416.68" y="655.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Execution::Call (15 samples, 39.47%; 0.00%)</title><rect x="165.3" y="965" width="465.8" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="168.26" y="975.5" >v8::internal::Execution::Call</text>
+</g>
+<g >
+<title>v8::internal::Runtime_WeakCollectionSet (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="437" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="447.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::TranslatedState::TranslatedState (2 samples, 5.26%; 0.00%)</title><rect x="351.6" y="629" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="354.58" y="639.5" >v8::in..</text>
+</g>
+<g >
+<title>uv__read (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1093" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1103.5" >uv__read</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="837" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="847.5" >Bu..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="709" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="719.5" >Stub:CEntryStub</text>
+</g>
+<g >
+<title>v8::internal::Isolate::RunMicrotasks (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="869" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="879.5" >v8::internal::Isolate::RunMicrotasks</text>
+</g>
+<g >
+<title>BytecodeHandler:CallRuntime (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="469" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="479.5" >By..</text>
+</g>
+<g >
+<title>LazyCompile:*parserOnHeadersComplete _http_common.js:61 (15 samples, 39.47%; -2.63%)</title><rect x="165.3" y="917" width="465.8" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="168.26" y="927.5" >LazyCompile:*parserOnHeadersComplete _http_common.js:61</text>
+</g>
+<g >
+<title>v8::internal::compiler::EffectControlLinearizer::Run (1 samples, 2.63%; 0.00%)</title><rect x="1065.8" y="1077" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1087.5" >v8..</text>
+</g>
+<g >
+<title>do_softirq (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="325" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="335.5" >do_sof..</text>
+</g>
+<g >
+<title>v8::internal::Heap::Scavenge (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="709" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="719.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::CompilationJob::ExecuteJob (4 samples, 10.53%; 0.00%)</title><rect x="1065.8" y="1141" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1151.5" >v8::internal::C..</text>
+</g>
+<g >
+<title>Builtin:JSConstructStubApi (1 samples, 2.63%; 0.00%)</title><rect x="941.6" y="693" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="944.58" y="703.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::CaptureSimpleStackTrace (3 samples, 7.89%; 0.00%)</title><rect x="320.5" y="661" width="93.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="671.5" >v8::interna..</text>
+</g>
+<g >
+<title>LazyCompile:*emit events.js:156 (11 samples, 28.95%; 0.00%)</title><rect x="227.4" y="869" width="341.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="879.5" >LazyCompile:*emit events.js:156</text>
+</g>
+<g >
+<title>v8::internal::JSReceiver::SetPrototype (2 samples, 5.26%; 0.00%)</title><rect x="506.8" y="677" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="509.84" y="687.5" >v8::in..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="941.6" y="677" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="944.58" y="687.5" >St..</text>
+</g>
+<g >
+<title>node::LibuvStreamWrap::OnRead (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1077" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1087.5" >node::LibuvStreamWrap::OnRead</text>
+</g>
+<g >
+<title>tcp_transmit_skb (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="437" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="447.5" >tcp_tr..</text>
+</g>
+<g >
+<title>node::StreamBase::WriteString&lt; (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="661" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="671.5" >node::..</text>
+</g>
+<g >
+<title>system_call_fastpath (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="597" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="607.5" >system..</text>
+</g>
+<g >
+<title>LazyCompile:*runMicrotasksCallback internal/process/next_tick.js:119 (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="901" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="911.5" >LazyCompile:*runMicrotasksCallback intern..</text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1 samples, 2.63%; -2.63%)</title><rect x="972.6" y="37" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="975.63" y="47.5" >_r..</text>
+</g>
+<g >
+<title>v8::internal::Heap::CreateFillerObjectAt (1 samples, 2.63%; -2.63%)</title><rect x="817.4" y="453" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="820.37" y="463.5" >v8..</text>
+</g>
+<g >
+<title>node::(anonymous namespace)::Parser::OnReadImpl (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1061" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1071.5" >node::(anonymous namespace)::Parser::OnReadImpl</text>
+</g>
+<g >
+<title>LazyCompile:* /srv/test/node_modules/paloma/router.js:33 (2 samples, 5.26%; 0.00%)</title><rect x="227.4" y="773" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="783.5" >LazyCo..</text>
+</g>
+<g >
+<title>v8::internal::ItemParallelJob::Run (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="549" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="559.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:JSEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="933" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="943.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::Object::AddDataProperty (2 samples, 5.26%; 0.00%)</title><rect x="444.7" y="629" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="447.74" y="639.5" >v8::in..</text>
+</g>
+<g >
+<title>ip_rcv (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="213" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="223.5" >ip_rcv</text>
+</g>
+<g >
+<title>LazyCompile:*controller /srv/test/app.js:18 (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="677" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="687.5" >La..</text>
+</g>
+<g >
+<title>Builtin:ArgumentsAdaptorTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="568.9" y="869" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="571.95" y="879.5" >Bu..</text>
+</g>
+<g >
+<title>StoreIC:A store IC from the snapshot (1 samples, 2.63%; -2.63%)</title><rect x="693.2" y="853" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="696.16" y="863.5" >St..</text>
+</g>
+<g >
+<title>v8::internal::compiler::PipelineCompilationJob::ExecuteJobImpl (4 samples, 10.53%; 0.00%)</title><rect x="1065.8" y="1125" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1135.5" >v8::internal::c..</text>
+</g>
+<g >
+<title>v8::Function::Call (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="981" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="991.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::ErrorUtils::Construct (3 samples, 7.89%; 0.00%)</title><rect x="413.7" y="677" width="93.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="416.68" y="687.5" >v8::interna..</text>
+</g>
+<g >
+<title>Builtin:Add (1 samples, 2.63%; -2.63%)</title><rect x="755.3" y="725" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="758.26" y="735.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::JSObject::SetOwnPropertyIgnoreAttributes (2 samples, 5.26%; 0.00%)</title><rect x="444.7" y="661" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="447.74" y="671.5" >v8::in..</text>
+</g>
+<g >
+<title>Stub:CallApiCallbackStub (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="693" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="703.5" >Stub:C..</text>
+</g>
+<g >
+<title>tcp_rcv_established (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="117" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="127.5" >tcp_rc..</text>
+</g>
+<g >
+<title>v8::Function::Call (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="997" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="1007.5" >v8::Function::Call</text>
+</g>
+<g >
+<title>local_bh_enable (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="357" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="367.5" >local_..</text>
+</g>
+<g >
+<title>v8::Function::Call (15 samples, 39.47%; 0.00%)</title><rect x="165.3" y="981" width="465.8" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="168.26" y="991.5" >v8::Function::Call</text>
+</g>
+<g >
+<title>tcp_rcv_established (1 samples, 2.63%; 0.00%)</title><rect x="879.5" y="117" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="882.47" y="127.5" >tc..</text>
+</g>
+<g >
+<title>v8::internal::Runtime_ReportPromiseReject (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="629" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="639.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Builtin_HandleApiCall (1 samples, 2.63%; 0.00%)</title><rect x="941.6" y="661" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="944.58" y="671.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::compiler::Scheduler::ScheduleEarly (1 samples, 2.63%; -2.63%)</title><rect x="1127.9" y="1045" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="1130.89" y="1055.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*dispatch /srv/test/node_modules/koa-compose/index.js:35 (2 samples, 5.26%; 0.00%)</title><rect x="227.4" y="789" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="799.5" >LazyCo..</text>
+</g>
+<g >
+<title>v8::internal::compiler::PipelineImpl::OptimizeGraph (4 samples, 10.53%; 0.00%)</title><rect x="1065.8" y="1109" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1119.5" >v8::internal::c..</text>
+</g>
+<g >
+<title>uv__stream_io (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1109" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1119.5" >uv__stream_io</text>
+</g>
+<g >
+<title>v8::internal::Heap::CollectGarbage (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="741" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="751.5" >v8..</text>
+</g>
+<g >
+<title>__do_softirq (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="293" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="303.5" >__do_s..</text>
+</g>
+<g >
+<title>LazyCompile:*dispatch /srv/test/node_modules/koa-compose/index.js:35 (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="837" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="847.5" >LazyCompile:*dispatch /srv/test/n..</text>
+</g>
+<g >
+<title>v8::internal::Execution::Call (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="965" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="975.5" >v8::internal::Execution::Call</text>
+</g>
+<g >
+<title>Stub:JSEntryStub (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="805" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="815.5" >Stub:JSEntryStub</text>
+</g>
+<g >
+<title>ip_local_deliver_finish (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="165" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="175.5" >ip_loc..</text>
+</g>
+<g >
+<title>ip_local_out_sk (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="405" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="415.5" >ip_loc..</text>
+</g>
+<g >
+<title>node::BackgroundRunner (4 samples, 10.53%; 0.00%)</title><rect x="1065.8" y="1173" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1183.5" >node::Backgroun..</text>
+</g>
+<g >
+<title>v8::internal::Heap::CopyArrayAndGrow&lt;v8::internal::PropertyArray&gt; (1 samples, 2.63%; -2.63%)</title><rect x="444.7" y="581" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="447.74" y="591.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Heap::PerformGarbageCollection (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="725" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="735.5" >v8..</text>
+</g>
+<g >
+<title>__inet_lookup_established (1 samples, 2.63%; -2.63%)</title><rect x="848.4" y="133" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="851.42" y="143.5" >__..</text>
+</g>
+<g >
+<title>tcp_send_delayed_ack (1 samples, 2.63%; 0.00%)</title><rect x="972.6" y="85" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="95.5" >tc..</text>
+</g>
+<g >
+<title>do_softirq (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="325" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="335.5" >do_sof..</text>
+</g>
+<g >
+<title>node::AsyncWrap::MakeCallback (15 samples, 39.47%; 0.00%)</title><rect x="165.3" y="1013" width="465.8" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="168.26" y="1023.5" >node::AsyncWrap::MakeCallback</text>
+</g>
+<g >
+<title>ip_output (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="389" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="399.5" >ip_out..</text>
+</g>
+<g >
+<title>net_rx_action (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="277" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="287.5" >net_rx..</text>
+</g>
+<g >
+<title>__memcmp_sse4_1 (1 samples, 2.63%; -2.63%)</title><rect x="600.0" y="821" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="603.00" y="831.5" >__..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::RunMicrotasksInternal (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="853" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="863.5" >v8::internal::Isolate::RunMicrotasksInter..</text>
+</g>
+<g >
+<title>inet_sendmsg (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="517" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="527.5" >inet_s..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="568.9" y="885" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="571.95" y="895.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::CaptureAndSetSimpleStackTrace (1 samples, 2.63%; 0.00%)</title><rect x="413.7" y="661" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="416.68" y="671.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Builtin_ErrorConstructor (3 samples, 7.89%; 0.00%)</title><rect x="413.7" y="693" width="93.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="416.68" y="703.5" >v8::interna..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="757" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="767.5" >Builtin:InterpreterEntryTrampoline</text>
+</g>
+<g >
+<title>LazyCompile:* /srv/test/node_modules/paloma/router.js:33 (8 samples, 21.05%; +2.63%)</title><rect x="320.5" y="789" width="248.4" height="15.0" fill="rgb(255,140,140)" rx="2" ry="2" />
+<text  x="323.53" y="799.5" >LazyCompile:* /srv/test/node_modu..</text>
+</g>
+<g >
+<title>do_sync_write (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="549" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="559.5" >do_syn..</text>
+</g>
+<g >
+<title>v8::internal::(anonymous namespace)::HandleApiCallHelper&lt;true&gt; (1 samples, 2.63%; 0.00%)</title><rect x="941.6" y="645" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="944.58" y="655.5" >v8..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="600.0" y="901" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="603.00" y="911.5" >St..</text>
+</g>
+<g >
+<title>tcp_v4_do_rcv (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="133" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="143.5" >tcp_v4..</text>
+</g>
+<g >
+<title>Stub:JSEntryStub (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="949" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="959.5" >Stub:JSEntryStub</text>
+</g>
+<g >
+<title>LazyCompile:*tokensToRegExp /srv/test/node_modules/path-to-regexp/index.js:293 (1 samples, 2.63%; 0.00%)</title><rect x="258.4" y="757" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="261.42" y="767.5" >La..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (2 samples, 5.26%; 0.00%)</title><rect x="227.4" y="853" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="863.5" >Builti..</text>
+</g>
+<g >
+<title>sock_aio_write (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="533" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="543.5" >sock_a..</text>
+</g>
+<g >
+<title>local_bh_enable (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="357" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="367.5" >local_..</text>
+</g>
+<g >
+<title>start_thread (4 samples, 10.53%; 0.00%)</title><rect x="1065.8" y="1189" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1199.5" >start_thread</text>
+</g>
+<g >
+<title>v8::internal::Scavenger::ScavengeObject (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="485" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="495.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*controller /srv/test/app.js:18 (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="725" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="735.5" >LazyCompile:*controller /srv/test..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (2 samples, 5.26%; 0.00%)</title><rect x="693.2" y="901" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="911.5" >Builti..</text>
+</g>
+<g >
+<title>node::StreamBase::JSMethod&lt;node::LibuvStreamWrap, &amp; (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="677" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="687.5" >node::..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="693.2" y="885" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="895.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::Heap::PerformGarbageCollection (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="581" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="591.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:ArgumentsAdaptorTrampoline (8 samples, 21.05%; 0.00%)</title><rect x="320.5" y="741" width="248.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="751.5" >Builtin:ArgumentsAdaptorTrampoline</text>
+</g>
+<g >
+<title>BytecodeHandler:StaNamedPropertyStrict (1 samples, 2.63%; 0.00%)</title><rect x="693.2" y="869" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="879.5" >By..</text>
+</g>
+<g >
+<title>tcp_v4_do_rcv (1 samples, 2.63%; 0.00%)</title><rect x="879.5" y="133" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="882.47" y="143.5" >tc..</text>
+</g>
+<g >
+<title>v8::internal::compiler::PipelineImpl::ScheduleAndSelectInstructions (2 samples, 5.26%; 0.00%)</title><rect x="1096.8" y="1093" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1099.84" y="1103.5" >v8::in..</text>
+</g>
+<g >
+<title>node::(anonymous namespace)::PromiseRejectCallback (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="597" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="607.5" >no..</text>
+</g>
+<g >
+<title>ip_queue_xmit (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="421" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="431.5" >ip_que..</text>
+</g>
+<g >
+<title>node::LibuvStreamWrap::DoTryWrite (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="645" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="655.5" >node::..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (4 samples, 10.53%; 0.00%)</title><rect x="910.5" y="741" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="913.53" y="751.5" >Builtin:Interpr..</text>
+</g>
+<g >
+<title>__wake_up_sync_key (1 samples, 2.63%; 0.00%)</title><rect x="879.5" y="69" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="882.47" y="79.5" >__..</text>
+</g>
+<g >
+<title>v8::internal::(anonymous namespace)::Slow_ArrayConcat (1 samples, 2.63%; 0.00%)</title><rect x="258.4" y="709" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="261.42" y="719.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; -2.63%)</title><rect x="724.2" y="853" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="727.21" y="863.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::ScavengingTask::RunInParallel (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="517" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="527.5" >v8..</text>
+</g>
+<g >
+<title>BytecodeHandler:Mov (1 samples, 2.63%; -2.63%)</title><rect x="1034.7" y="741" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="1037.74" y="751.5" >By..</text>
+</g>
+<g >
+<title>sk_reset_timer (1 samples, 2.63%; 0.00%)</title><rect x="972.6" y="69" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="79.5" >sk..</text>
+</g>
+<g >
+<title>v8::internal::PageScavengingItem::Process (1 samples, 2.63%; 0.00%)</title><rect x="817.4" y="501" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="820.37" y="511.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*parserOnMessageComplete _http_common.js:145 (1 samples, 2.63%; -2.63%)</title><rect x="631.1" y="917" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="634.05" y="927.5" >La..</text>
+</g>
+<g >
+<title>Stub:JSEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="949" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="959.5" >St..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::ReportPromiseReject (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="613" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="623.5" >v8..</text>
+</g>
+<g >
+<title>node::AsyncWrap::MakeCallback (1 samples, 2.63%; 0.00%)</title><rect x="631.1" y="1013" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="634.05" y="1023.5" >no..</text>
+</g>
+<g >
+<title>v8::Function::Call (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="581" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="591.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Factory::NewFillerObject (1 samples, 2.63%; 0.00%)</title><rect x="289.5" y="757" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="767.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*ReadableState _stream_readable.js:58 (1 samples, 2.63%; -2.63%)</title><rect x="196.3" y="885" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="199.32" y="895.5" >La..</text>
+</g>
+<g >
+<title>BytecodeHandler:LdaSmi (1 samples, 2.63%; -2.63%)</title><rect x="568.9" y="821" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="571.95" y="831.5" >By..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="645" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="655.5" >St..</text>
+</g>
+<g >
+<title>node::AsyncWrap::MakeCallback (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="1045" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="1055.5" >node::AsyncWrap::MakeCallback</text>
+</g>
+<g >
+<title>v8::Function::Call (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="565" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="575.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:* /srv/test/node_modules/paloma/router.js:33 (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="741" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="751.5" >La..</text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1 samples, 2.63%; 0.00%)</title><rect x="1003.7" y="53" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1006.68" y="63.5" >_r..</text>
+</g>
+<g >
+<title>v8::internal::Builtin_ArrayConcat (1 samples, 2.63%; 0.00%)</title><rect x="258.4" y="725" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="261.42" y="735.5" >v8..</text>
+</g>
+<g >
+<title>vfs_write (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="565" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="575.5" >vfs_wr..</text>
+</g>
+<g >
+<title>http_parser_execute (18 samples, 47.37%; +5.26%)</title><rect x="134.2" y="1045" width="559.0" height="15.0" fill="rgb(255,70,70)" rx="2" ry="2" />
+<text  x="137.21" y="1055.5" >http_parser_execute</text>
+</g>
+<g >
+<title>LazyCompile:*Socket._writeGeneric net.js:721 (4 samples, 10.53%; 0.00%)</title><rect x="786.3" y="709" width="124.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="789.32" y="719.5" >LazyCompile:*So..</text>
+</g>
+<g >
+<title>all (38 samples, 100%)</title><rect x="10.0" y="1221" width="1180.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="13.00" y="1231.5" ></text>
+</g>
+<g >
+<title>Stub:CallApiCallbackStub (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="693" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="703.5" >Stub:C..</text>
+</g>
+<g >
+<title>node::InternalMakeCallback (15 samples, 39.47%; 0.00%)</title><rect x="165.3" y="997" width="465.8" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="168.26" y="1007.5" >node::InternalMakeCallback</text>
+</g>
+<g >
+<title>call_softirq (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="309" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="319.5" >call_s..</text>
+</g>
+<g >
+<title>v8::internal::StackFrameIterator::Advance (1 samples, 2.63%; -2.63%)</title><rect x="289.5" y="677" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="292.47" y="687.5" >v8..</text>
+</g>
+<g >
+<title>[libpthread-2.17.so] (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="613" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="623.5" >[libpt..</text>
+</g>
+<g >
+<title>Stub:CEntryStub (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="453" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="463.5" >St..</text>
+</g>
+<g >
+<title>system_call_fastpath (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="597" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="607.5" >system..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; +2.63%)</title><rect x="724.2" y="869" width="31.1" height="15.0" fill="rgb(255,140,140)" rx="2" ry="2" />
+<text  x="727.21" y="879.5" >Bu..</text>
+</g>
+<g >
+<title>LazyCompile:*onwrite _stream_writable.js:432 (2 samples, 5.26%; -2.63%)</title><rect x="786.3" y="677" width="62.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="789.32" y="687.5" >LazyCo..</text>
+</g>
+<g >
+<title>_int_free (4 samples, 10.53%; -7.89%)</title><rect x="10.0" y="1173" width="124.2" height="15.0" fill="rgb(0,0,255)" rx="2" ry="2" />
+<text  x="13.00" y="1183.5" >_int_free</text>
+</g>
+<g >
+<title>__tcp_push_pending_frames (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="469" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="479.5" >__tcp_..</text>
+</g>
+<g >
+<title>process_backlog (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="261" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="271.5" >proces..</text>
+</g>
+<g >
+<title>Builtin:InterpreterEntryTrampoline (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="485" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="495.5" >Bu..</text>
+</g>
+<g >
+<title>v8::internal::compiler::PipelineImpl::Run&lt;v8::internal::compiler::EffectControlLinearizationPhase&gt; (1 samples, 2.63%; 0.00%)</title><rect x="1065.8" y="1093" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1068.79" y="1103.5" >v8..</text>
+</g>
+<g >
+<title>Stub:JSEntryStub (15 samples, 39.47%; 0.00%)</title><rect x="165.3" y="949" width="465.8" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="168.26" y="959.5" >Stub:JSEntryStub</text>
+</g>
+<g >
+<title>Builtin:ArgumentsAdaptorTrampoline (2 samples, 5.26%; 0.00%)</title><rect x="786.3" y="693" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="789.32" y="703.5" >Builti..</text>
+</g>
+<g >
+<title>Builtin:ArgumentsAdaptorTrampoline (2 samples, 5.26%; 0.00%)</title><rect x="227.4" y="821" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="831.5" >Builti..</text>
+</g>
+<g >
+<title>uv__io_poll (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1125" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1135.5" >uv__io_poll</text>
+</g>
+<g >
+<title>__local_bh_enable_ip (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="341" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="351.5" >__loca..</text>
+</g>
+<g >
+<title>v8::internal::LookupIterator::PrepareTransitionToDataProperty (1 samples, 2.63%; 0.00%)</title><rect x="475.8" y="613" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="478.79" y="623.5" >v8..</text>
+</g>
+<g >
+<title>tcp_write_xmit (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="453" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="463.5" >tcp_wr..</text>
+</g>
+<g >
+<title>v8::internal::KeyedGetObjectProperty (1 samples, 2.63%; 0.00%)</title><rect x="600.0" y="869" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="603.00" y="879.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::TranslationIterator::Next (1 samples, 2.63%; -2.63%)</title><rect x="382.6" y="597" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="385.63" y="607.5" >v8..</text>
+</g>
+<g >
+<title>do_sync_write (2 samples, 5.26%; 0.00%)</title><rect x="848.4" y="549" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="851.42" y="559.5" >do_syn..</text>
+</g>
+<g >
+<title>__libc_start_main (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1189" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1199.5" >__libc_start_main</text>
+</g>
+<g >
+<title>Builtin:JSConstructStubGenericUnrestrictedReturn (1 samples, 2.63%; 0.00%)</title><rect x="196.3" y="901" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="199.32" y="911.5" >Bu..</text>
+</g>
+<g >
+<title>ip_local_deliver (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="181" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="191.5" >ip_loc..</text>
+</g>
+<g >
+<title>v8::internal::GlobalHandles::Create (1 samples, 2.63%; -2.63%)</title><rect x="258.4" y="693" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="261.42" y="703.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Execution::Call (1 samples, 2.63%; 0.00%)</title><rect x="227.4" y="549" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="559.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*parserOnIncoming _http_server.js:562 (12 samples, 31.58%; 0.00%)</title><rect x="227.4" y="901" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="911.5" >LazyCompile:*parserOnIncoming _http_server.js:562</text>
+</g>
+<g >
+<title>v8::internal::compiler::GraphTrimmer::TrimGraph (1 samples, 2.63%; -2.63%)</title><rect x="1096.8" y="1061" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="1099.84" y="1071.5" >v8..</text>
+</g>
+<g >
+<title>v8::internal::Isolate::CaptureAndSetSimpleStackTrace (3 samples, 7.89%; 0.00%)</title><rect x="320.5" y="677" width="93.2" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="323.53" y="687.5" >v8::interna..</text>
+</g>
+<g >
+<title>node::StreamBase::WriteString&lt; (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="661" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="671.5" >node::..</text>
+</g>
+<g >
+<title>v8::internal::compiler::SimplifiedLowering::LowerAllNodes (1 samples, 2.63%; -2.63%)</title><rect x="1158.9" y="1093" width="31.1" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="1161.95" y="1103.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:JSEntryTrampoline (12 samples, 31.58%; 0.00%)</title><rect x="693.2" y="933" width="372.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="696.16" y="943.5" >Builtin:JSEntryTrampoline</text>
+</g>
+<g >
+<title>tcp_data_queue (1 samples, 2.63%; 0.00%)</title><rect x="1003.7" y="101" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1006.68" y="111.5" >tc..</text>
+</g>
+<g >
+<title>v8::internal::HashTable&lt;v8::internal::StringTable, v8::internal::StringTableShape&gt;::FindEntry (1 samples, 2.63%; 0.00%)</title><rect x="600.0" y="837" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="603.00" y="847.5" >v8..</text>
+</g>
+<g >
+<title>uv_run (30 samples, 78.95%; 0.00%)</title><rect x="134.2" y="1141" width="931.6" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="137.21" y="1151.5" >uv_run</text>
+</g>
+<g >
+<title>node::LibuvStreamWrap::DoTryWrite (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="645" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="655.5" >node::..</text>
+</g>
+<g >
+<title>__wake_up_sync_key (1 samples, 2.63%; 0.00%)</title><rect x="1003.7" y="69" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1006.68" y="79.5" >__..</text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1 samples, 2.63%; -2.63%)</title><rect x="879.5" y="53" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="882.47" y="63.5" >_r..</text>
+</g>
+<g >
+<title>v8::internal::compiler::Scheduler::ComputeSchedule (1 samples, 2.63%; 0.00%)</title><rect x="1127.9" y="1061" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="1130.89" y="1071.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:PromiseHandle (10 samples, 26.32%; 0.00%)</title><rect x="755.3" y="773" width="310.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="758.26" y="783.5" >Builtin:PromiseHandle</text>
+</g>
+<g >
+<title>__netif_receive_skb (2 samples, 5.26%; 0.00%)</title><rect x="972.6" y="245" width="62.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="975.63" y="255.5" >__neti..</text>
+</g>
+<g >
+<title>tcp_data_queue (1 samples, 2.63%; 0.00%)</title><rect x="879.5" y="101" width="31.0" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="882.47" y="111.5" >tc..</text>
+</g>
+<g >
+<title>v8::internal::OptimizedFrame::Summarize (3 samples, 7.89%; -2.63%)</title><rect x="320.5" y="645" width="93.2" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="323.53" y="655.5" >v8::interna..</text>
+</g>
+<g >
+<title>v8::internal::StringTable::LookupString (1 samples, 2.63%; 0.00%)</title><rect x="600.0" y="853" width="31.1" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="603.00" y="863.5" >v8..</text>
+</g>
+<g >
+<title>LazyCompile:*handleRequest /srv/test/node_modules/koa/lib/application.js:131 (9 samples, 23.68%; 0.00%)</title><rect x="289.5" y="853" width="279.4" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="292.47" y="863.5" >LazyCompile:*handleRequest /srv/test/..</text>
+</g>
+<g >
+<title>v8::internal::PrototypeIterator::Advance (1 samples, 2.63%; -2.63%)</title><rect x="537.9" y="661" width="31.0" height="15.0" fill="rgb(140,140,255)" rx="2" ry="2" />
+<text  x="540.89" y="671.5" >v8..</text>
+</g>
+<g >
+<title>Builtin:ArgumentsAdaptorTrampoline (11 samples, 28.95%; 0.00%)</title><rect x="227.4" y="885" width="341.5" height="15.0" fill="rgb(255,255,255)" rx="2" ry="2" />
+<text  x="230.37" y="895.5" >Builtin:ArgumentsAdaptorTrampoline</text>
+</g>
+</g>
+</svg>

@@ -4,6 +4,8 @@
 
 ### perf, FlameGraph
 
+#### 火焰图
+
 `perf`是`Linux Kernal`自带性能分析工具。它是基于内核源码的一些`hook`——`Tracepoint`, 能进行函数级与指令级的热点查找。centos系统直接`yum install -y perf`进行安装。
 
 我们node运行`node --perf_basic_prof app.js &`(加&会进入后台运行)，会在`/tmp/`下生产一个`perf-#{id}.map`的文件。
@@ -48,3 +50,38 @@ e3a46eec51a 8 Script:~ cluster.js:1
 <img src="./images/flamegraph_async.svg?sanitize=true">
 
 可以看到js代码中的宽度块所占宽度大大减少，同时多了一个`node:BackroundRunner`，是采用线程池异步执行来优化了性能。
+
+
+#### 红蓝差火焰图
+
+是基于优化前后的profile文件进行展示。如果优化后出现的次数多则为红色，否则为蓝色。
+
+在代码修改前后分别执行：
+
+```
+perf record -F 99 -p <PID> -g -- sleep 30
+
+perf script > perf_before.stacks
+```
+
+然后生成差分火焰图
+
+```
+~/FlameGraph/stackcollapse-perf.pl ~/perf_before.stacks > perf_before.folded
+~/FlameGraph/stackcollapse-perf.pl ~/perf_after.stacks > perf_after.folded
+~/FlameGraph/difffolded.pl perf_before.folded perf_after.folded | ~/FlameGraph/flamegraph.pl > flamegraph_diff.svg
+```
+<img src="./images/flamegraph_diff.svg?sanitize=true">
+
+
+如果出现次数变少，则会是蓝色，就会造成一个问题就是如果优化后不再执行，那么就完全不没有蓝色显示。此时需要反差差分火焰图。
+
+```
+./FlameGraph/difffolded.pl perf_after.folded perf_before.folded | ./FlameGraph/flamegraph.pl --negate > flamegraph_diff2.svg
+```
+
+<img src="./images/flamegraph_diff2.svg?sanitize=true">
+
+`flamegraph_diff`表示已修改前为基础，`flamegraph_diff2`表示已修改后为基准。`--negate`用于颠倒红蓝配色。
+
+差分火焰图适合代码变化不大的情况。
