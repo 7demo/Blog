@@ -298,3 +298,31 @@ Shared libraries]:
 根据上述代码，可以看到闭包问题：`originLeakObject/leakObject`。
 
 也可以选择`Comparison`来看前后两个快照的对比。
+
+### memwatch-next
+
+`memwatch-next`模块是可以观测发现内存泄漏的一个模块。`memwatch`可以监听`stats`（每次GC会触发）、`leak`（可疑内存泄漏，触发条件内存5次GC都是增长的）
+
+`memwatch-next`最好与`heapdump`结合使用——在进程开始时，输出一次快照，在监听到`leak`时输出一个快照。通过`devtool`来定位。
+
+我们通过`node --expose-gc app.js`来启动程序，可以手动触发GC——`global.gc()`.
+
+
+### cpu-memory-monitor
+
+`cpu-memory-monitor`可以配置策略自动dump内存与cpu的情况。
+
+```javaScript
+require('cpu-memory-monitor')({
+  cpu: {
+    interval: 1000,
+    duration: 30000,
+    threshold: 60,
+    profileDir: '/tmp',
+    counter: 3,
+    limiter: [5, 'hour']
+  }
+})
+```
+
+1000ms监测一次，连续三次cpu使用率大于60%，则dump30s的cpu得使用情况。1小时最多dump5次。以上是监测cpu, 监测memory类似。
