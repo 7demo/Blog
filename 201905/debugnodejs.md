@@ -326,3 +326,40 @@ require('cpu-memory-monitor')({
 ```
 
 1000ms监测一次，连续三次cpu使用率大于60%，则dump30s的cpu得使用情况。1小时最多dump5次。以上是监测cpu, 监测memory类似。
+
+### node-clinic
+
+`node-clinic`是一个开箱即用的`node`诊断工具。
+
+---
+
+## Error
+
+错误类型：
+
+1, `Error`是通用错误类型。
+
+2，`SyntaxError`语法错误
+
+3，`ReferenceError`引用错误
+
+4, `TypeError`类型错误。
+
+5， `URIError`全局URI处理函数跑出错误
+
+6，`AssertError`是`assert`模块跑出的错误
+
+`Error.captureStackTrace`是V8提供的一个api，接受两个参数`Error.captureStackTrace(targetObject[, constructorOpt])`, 此时`targetObject`是拥有一个`stack`属性，访问改属性，会返回`Error.captureStackTrace`的调用栈历史。
+
+另外一个`Errir.prepareStackTrace`可以定制化错误信息显示。
+
+---
+
+## debug
+
+1, `node --inspect app.js`
+
+2, `inspect-process`
+
+3, `process._debugProcess`
+
