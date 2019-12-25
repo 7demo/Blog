@@ -13,7 +13,6 @@
 + [vuex](/201911/vuex.md)
 + [vue-router](/201912/vue-router.md)
 + [vue3之proxy](/201912/proxy.md)
-+ [tapable](/201912/tapable.md)
 
 ### webpack
 ---
@@ -30,6 +29,9 @@
 + [AST，JavaScript](/201908/AST.md)
 + [Promise的自实现](/201910/Promise.md)
 + [Eventloop](/201910/Eventloop.md)
++ [V8垃圾回收](/201912/gc.md)
+- [实现new](/201912/gc.md)
+- [如何实现bind](/201912/gc.md)
 
 ### nodejs
 ---
