@@ -30,8 +30,8 @@
 + [Promise的自实现](/201910/Promise.md)
 + [Eventloop](/201910/Eventloop.md)
 + [V8垃圾回收](/201912/gc.md)
-- [实现new](/201912/gc.md)
-- [如何实现bind](/201912/gc.md)
++ [实现new](/201912/new.md)
++ [如何实现bind](/201912/gc.md)
 
 ### nodejs
 ---
