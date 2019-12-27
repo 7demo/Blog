@@ -88,3 +88,33 @@ function getRepeat(arr) {
     return ret
 }
 ```
+
+#### 4. 二维数组是否包含给予的整数
+
+> 二维数组每行都是从左到右递增，从上到下也是递增
+
+```
+1 2 8 9
+2 4 9 12
+4 7 10 13
+6 8 11 15
+```
+二维数组可以视为一个方格，第一次取右上角的值，如果比目标值大，说明最有一列直接可以舍弃。如果比目标值小，说明要从第二行查找。
+
+```javaScript
+function find(arr, num) {
+    let i = 0
+    let j = arr[0].length - 1
+    while (i < arr.length && j >= 0) {
+        if (arr[i][j] === num) {
+            return true
+        }
+        if (arr[i][j] > num) {
+            j --
+        } else {
+            i++
+        }
+    }
+    return false
+}
+```
