@@ -109,3 +109,8 @@ If-Modified-since: time  如果指定日期修改后，则请求
 If-Node-Match: tag  如果tag与服务器不一致，则请求
 
 
+#### 传输
+
+`Content-length`如果没有报文主体，则不可参考`content-length`，如head请求。
+
+`Transfer-encoding`的值只有`chunked`，表示分块传输，每块包含16进制的长度值与数据，长度值单独占一行，最后一个块的长度值比为0.

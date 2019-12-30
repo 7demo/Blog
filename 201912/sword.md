@@ -118,3 +118,37 @@ function find(arr, num) {
     return false
 }
 ```
+
+#### 4. 替换字符串
+
+> 替换字符串中的值后，因为新加入的值会移动(重新分配内存)，要求复杂度为O(n)——如果简单遍历移动，替换的为O(n), 移动也为O(n), 最终的复杂度为O(n^2)
+
+```javaScript
+// jsdaim
+function move(str) {
+    let len = str.length
+    let replaceEleLen = 0
+    for (i = 0; i < len; i++) {
+        if (str[i] == ' ') {
+            replaceEleLen ++
+        }
+    }
+    let toltalLen = len + replaceEleLen * 2
+    while (toltalLen && len) {
+        if (!str[toltalLen - 1]) {
+            if (str[len - 1]) {
+                str[toltalLen - 1] = str[len - 1]
+                str[len - 1] = ''
+                toltalLen --
+            } else {
+                str[toltalLen - 1] = '%%'
+                toltalLen = toltalLen - 2
+            }
+        }
+        len --
+    }
+    return str
+}
+```
+
+#### 二叉树
