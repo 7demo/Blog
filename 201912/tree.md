@@ -55,10 +55,6 @@ function Node(data, left, right) {
 
 完全二叉树是基于满二叉树，如果二叉树的深度为n， 那么低n-1层是一个满二叉树，第n层的节点都在最左侧。
 
-#### 平衡二叉树（AVL）
-
-子树高度差不超过1的话称为平衡二叉树。它的查找时间复杂度为O(logn)。同时二叉排序树的最大时间为O(n).
-
 ## 查找
 
 我们先用用以上代码生成一个二叉树：
@@ -115,7 +111,6 @@ function bf(tree) {
             node.right && arr.push(node.right)
         }
     }
-    console.log(ret)
     return ret
 }
 ```
@@ -135,7 +130,6 @@ function bf(tree) {
             node.right && arr.push(node.right)
         }
     }
-    console.log(ret)
     return ret
 }
 ```
@@ -156,84 +150,7 @@ function tf(tree) {
 }
 ```
 
-#### 平衡二叉树均衡
 
-二叉树的左子节点减去右子节点的值只能为1，0或者-1，这是平衡因子。距离插入节点最近且平衡因子的绝对值大于1的节点称为最小不平衡树。
-
-构建时，可以通过4中情况的旋转来实现平衡——LL,RR,LR,RL.
-
-```javaScript
-// 判断是否平衡二叉树，
-function isBa(root) {
-    if (!root) {
-        return true
-    }
-    if (Math.abs(dp(root.left) - dp(root.right)) > 1) {
-        return false
-    }
-    return isBa(root.left) && isBa(root.right)
-    function dp(node) {
-        if (!node) {
-            return 0
-        }
-        let left = dp(node.left)
-        let right = dp(node.right)
-        return Math.max(left, right) + 1
-    }
-    return true
-}
-```
-
-*LL* 左旋转节点N，则会把右子节点R替换N，原R的左子节点变为N的右节点，整个N变成R的左子节点
-
-```javaScript
-function LL(node) {
-    let tmp = node.right
-    node.right = tmp.left
-    tmp.left = node
-    return tmp
-}
-```
-
-*RR* 右单旋子节点N，则会把左子节点R替换N, 原R的右子节点变为N的左子节点。整个N变成R的右子节点
-
-```javaScript
-function RR(node) {
-    let tmp = node.left
-    node.left = tmp.right
-    tmp.right = node
-    return tmp
-}
-```
-
-*LR* 表示先左单旋，再右单旋。RL则是先右单旋，再左单旋。
-
-至于适合哪种旋转，简单来说，则是哪侧支点深度小，则使用哪侧转。比如左侧树深度大，则使用右转RR。
-
-```javaScript
-function balance(node) {
-    if (node == null) {
-        return node
-    }
-    // 大于1，则没有处于平衡状态, 左侧大，肯定第一次是右旋
-    if (getTreeHeight(node.left) - getTreeHeight(node.right) > 1) {
-        // 最小不平衡树是左侧 则只右单旋
-        if (getTreeHeight(node.left.left) - getTreeHeight(node.left.right) > 1) {
-            node = RR(node)
-        } else {
-            node = RL(node)
-        }
-    } else if (getTreeHeight(node.right) - getTreeHeight(node.left) > 1) {
-        // 最小不平衡树是左侧 则只右单旋
-        if (getTreeHeight(node.right.right) - getTreeHeight(node.right.left) > 1) {
-            node = LL(node)
-        } else {
-            node = LR(node)
-        }
-    }
-    return node
-}
-```
 
 ## B树/2-3树
 
