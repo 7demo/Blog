@@ -17,3 +17,5 @@ function InsertSort(arr) {
     return arr
 }
 ```
+
+![avatar](./images/insert.webp)

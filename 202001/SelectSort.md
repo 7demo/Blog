@@ -19,3 +19,5 @@ function SelectSort(arr) {
     return arr
 }
 ```
+
+![avatar](./images/select.webp)

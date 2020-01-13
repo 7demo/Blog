@@ -18,3 +18,5 @@ function bubbleSort(arr) {
     return arr
 }
 ```
+
+![avatar](./images/bubble.webp)
