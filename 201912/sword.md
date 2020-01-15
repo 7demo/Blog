@@ -151,4 +151,31 @@ function move(str) {
 }
 ```
 
-#### 二叉树
+#### 7.重建二叉树
+
+> 按照深度优先的情况下，给定前序与中序顺序，由于中序顺序下，第一个值肯定是根节点，并且在中序遍历的时，根节点前的值都在左树，根节点有的值都在右树。
+
+```javaScript
+let arr1 = [1,2,4,7,3,5,6,8] // 前序
+let arr2 = [4,7,2,1,5,3,8,6] // 中序
+function Node(key) {
+    this.key = key
+    this.left = null
+    this.right = null
+}
+function createTree(pre, mid) {
+    let rootKey = pre[0]
+    if (!rootKey) {
+        return null
+    }
+    let rootIndex = arr2.indexOf(rootKey)
+    let tree = new Node(rootKey)
+    let midLeftArr = mid.slice(0, rootIndex)
+    let midrightArr = mid.slice(rootIndex + 1)
+    let preLeftArr = pre.slice(1, midLeftArr.length + 1)
+    let preRightArr = pre.slice(midLeftArr.length + 1)
+    tree.left = createTree(preLeftArr, midLeftArr)
+    tree.right = createTree(preRightArr, midrightArr)
+    return tree
+}
+```
