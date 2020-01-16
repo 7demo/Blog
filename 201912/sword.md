@@ -179,3 +179,77 @@ function createTree(pre, mid) {
     return tree
 }
 ```
+
+#### 10.斐波那锲数列
+
+> 最基本的算法如下，但是时间复杂度为O(2^n)——类似一个完全二叉树求值，这个二叉树的高度为n-1，那么节点最多可以有2^n -1 个。
+
+```javaScript
+function fib(n) {
+    if (n == 0) {
+        return 1
+    }
+    if (n == 1) {
+        return 1
+    }
+    return fib(n-1) + fib(n-2)
+}
+```
+
+以上算法，采用尾递归，时间复杂度为O(n)
+
+```javaScript
+function fib(n, f0=1, f1=1) {
+    if (n <= 1) {
+        return f1
+    }
+    return fib(n-1, f1, f1+f0)
+}
+```
+
+以下是循环法，时间复杂度也为O(n)
+
+```javaScript
+function fib(n) {
+    let f0 = 1
+    let f1 = 1
+    let fn = 0
+    for (let i = 2; i <= n; i++) {
+        fn = f0+f1
+        f0 = f1
+        f1 = fn
+    }
+    return fn
+}
+```
+
+#### 11.年龄排序
+
+> 对n个人的年龄进行排序，要求复杂度为O(n).我们假设人的年龄在0-99之前。
+
+我们记录每个年龄出现的次数，最后遍历记录，生成年龄队列。
+
+
+#### 12.旋转数组的最小数字。
+
+> 旋转数组是指把数组的一部分挪到尾部。题目的意思是寻求有序旋转数组的最小值，O(n)是不合格的。此处用二分法，O(logn)
+
+> 开始设置两个指针，分别指向数组的第一个元素与最后一个元素，若中间元素大于最后一个值，则整个数组的最小值就在后一部分，若小于，则位于前面。
+
+```javaScript
+function sort(arr) {
+    let i = 0
+    let j = arr.length - 1
+    let m = 0
+    while (i + 1 < j) {
+        let mid = Math.floor((i+j)/2)
+        if (arr[mid] > arr[j]) {
+            i = mid
+        } else if (arr[mid] < arr[j]) {
+            j = mid
+        }
+    }
+    m = Math.min(arr[i], arr[j])
+    return m
+}
+```
