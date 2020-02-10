@@ -223,14 +223,7 @@ function fib(n) {
 }
 ```
 
-#### 11.年龄排序
-
-> 对n个人的年龄进行排序，要求复杂度为O(n).我们假设人的年龄在0-99之前。
-
-我们记录每个年龄出现的次数，最后遍历记录，生成年龄队列。
-
-
-#### 12.旋转数组的最小数字。
+#### 11.旋转数组的最小数字。
 
 > 旋转数组是指把数组的一部分挪到尾部。题目的意思是寻求有序旋转数组的最小值，O(n)是不合格的。此处用二分法，O(logn)
 
@@ -251,5 +244,69 @@ function sort(arr) {
     }
     m = Math.min(arr[i], arr[j])
     return m
+}
+```
+
+#### 12.矩阵路径
+
+> 矩阵中是否包含一条路径包含某些节点的路径。节点不可重复。回溯法。比如以下，求必须包含bfce的路径。
+
+a   b   t   g
+
+c   f   c   s
+
+j   d   e   h
+
+```javascript
+let m = [
+    ['a', 'b' ,'t', 'g'],
+    ['c', 'f', 'c', 's'],
+    ['j', 'd', 'e', 'h']
+]
+
+// let str = 'ak'
+let str = 'bfce'
+
+function getPath(m, path) {
+    let x = 0
+    let y = 0
+    let xEnd = m[0].length
+    let yEnd = m.length
+    let visited = [] // 初始化标记组 用来记录已访记录
+    let pathLen = 0
+
+    for (let i =0 ; i < xEnd; i++) {
+        visited[i] = []
+        for (let j = 0; j < yEnd; j++) {
+            visited[i][j] = false
+        }
+    }
+
+    for (; x < xEnd; x++) {
+        for (; y < yEnd; y++) {
+            if (hasPathCore(m, x, y, xEnd, yEnd, visited, pathLen, path)) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
+
+function hasPathCore(m, x, y, xEnd, yEnd, visited, pathLen, path) {
+    if (path[pathLen] == undefined) {
+        return true
+    }
+    let flag = false
+    if (x >= 0 && x < xEnd && y >=0 && y < yEnd && m[x][y] == path[pathLen] && !visited[x][y]) {
+        visited[x][y] = true
+        pathLen++
+        flag = hasPathCore(m, x + 1, y, xEnd, yEnd, visited, pathLen, path) || hasPathCore(m, x - 1, y, xEnd, yEnd, visited, pathLen, path) || hasPathCore(m, x, y + 1, xEnd, yEnd, visited, pathLen, path) || hasPathCore(m, x, y - 1, xEnd, yEnd, visited, pathLen, path)
+        if (!flag) {
+            pathLen --
+            visited[x][y] = false
+        }
+    }
+    return flag
 }
 ```
