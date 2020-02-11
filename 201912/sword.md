@@ -247,9 +247,9 @@ function sort(arr) {
 }
 ```
 
-#### 12.矩阵路径
+#### 回溯法
 
-> 矩阵中是否包含一条路径包含某些节点的路径。节点不可重复。回溯法。比如以下，求必须包含bfce的路径。
+> 12.矩阵路径。矩阵中是否包含一条路径包含某些节点的路径。节点不可重复。回溯法。比如以下，求必须包含bfce的路径。
 
 a   b   t   g
 
@@ -257,7 +257,7 @@ c   f   c   s
 
 j   d   e   h
 
-```javascript
+```JavaScript
 let m = [
     ['a', 'b' ,'t', 'g'],
     ['c', 'f', 'c', 's'],
@@ -308,5 +308,42 @@ function hasPathCore(m, x, y, xEnd, yEnd, visited, pathLen, path) {
         }
     }
     return flag
+}
+```
+
+> 12.2 机器人路径。地上有一个m行n列的方格，一个机器人从坐标（0，0）的位置开始移动，他每次可以向左，右，上，下移动一格，但不能进入行坐标与列坐标数位之和大于K的格子。例如当k=18，机器人可以进入方格为（35,37）,因为3+5+3+7 = 18 ; 而不能进入(36,37) 的格子，因为3+6+3+7 = 19 > 18 ;请问该机器人能够到达多少个格子。
+
+> 依然是回溯法。关于K的判定其实就是坐标分别拆分成单个数字进行相加。
+
+```javascript
+function getCount(num, m, n) {
+    // 记录是否访问过
+    let visited = []
+    for (let i = 0; i < m; i++) {
+        visited[i] = []
+        for (let j = 0; j < n; j++) {
+            visited[i][j] = false
+        }
+    }
+    return helper(num, 0, 0, m, n, visited)
+}
+
+function helper(num, i, j, m, n, visited) {
+    let count = 0
+    if (i >= 0 && j >=0 && i < m && j < n && !visited[i][j] && checkPointer(i, j) < num ) {
+        visited[i][j] = true
+        count ++
+        count += helper(num, i + 1, j, m, n, visited) + helper(num, i - 1, j, m, n, visited) + helper(num, i, j + 1, m, n, visited) + helper(num, i, j - 1, m, n, visited)
+    }
+    return count
+}
+
+function checkPointer(i， j) {
+    let str = j + '' + i
+    let num = 0
+    for (let m = 0; m < str.length; i++) {
+        num += str[m] / 1
+    }
+    return num
 }
 ```
