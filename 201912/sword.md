@@ -385,7 +385,7 @@ function getArea(n) {
 }
 ```
 
-> 贪婪算法。据上动态算法可知，大于3的时候，尽量分为长度为3的段。
+> 贪婪算法。据上动态算法可知，大于3的时候，尽量分为长度为3的段
 
 ```javaScript
 function LineMax(n) {
@@ -399,10 +399,15 @@ function LineMax(n) {
         return 2
     }
     let max = 1
-    while (n > 3) {
+    while (n >= 5) {
         n = n - 3
         max = max * 3
     }
-    return max * n
+    if (n == 4) {
+        max = max * 2 * 2
+    } else {
+        max = max * n
+    }
+    return max
 }
 ```
