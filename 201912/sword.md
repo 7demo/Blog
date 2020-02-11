@@ -347,3 +347,62 @@ function checkPointer(i， j) {
     return num
 }
 ```
+
+> 12.2 剪绳子
+
+> 给你一根长度为n的绳子，请把绳子剪成m段（m、n都是整数，n>1并且m>1），每段绳子的长度记为k[0],k[1],...,k[m]。请问k[0]xk[1]x...xk[m]可能的最大乘积是多少？ 题目中表示必须减一刀。
+
+> 动态规划。在如果在第i的地方剪一刀，则变成fn(i) * fn(n-i)，求各自对大的值。但是需要注意的时，长度为4时，可以分为2*2，但是因为长度为2时积为1，所以4以下的值要特别处理。
+
+```javaScript
+function getArea(n) {
+    if (n < 2) {
+        return 0
+    }
+    if (n == 2) {
+        return 1
+    }
+    if (n == 3) {
+        return 2
+    }
+    // 需要注意的时，长度为1时，因为必须切一刀，所以此时应该为0*1=0，所以当n大于一定值得时候，在切分的过程中因为参与运算积的原因，为1的时候，必须为1。
+    // 同理长度为2，正常来说为1，但是因为参与计算，所以为2。3的为3. 等到4的时候，就可以分解为2*2，就没有必要继续固定了。
+    let maxArea = [0, 1, 2, 3]
+    // 用来缓存参与计算时对应的切分段落值
+    let tmp = [[0],[1],[2],[3]]
+    for (let i = 4; i <= n; i++) {
+        maxArea[i] = 0
+        for (let j = 1; j <= i/2; j++) {
+            let area = maxArea[j] * maxArea[i - j]
+            if (area > maxArea[i]) {
+                maxArea[i] = area
+                tmp[i] = [...tmp[j], ...tmp[i - j]]
+            }
+        }
+    }
+    console.log(tmp[n])
+    return maxArea[n]
+}
+```
+
+> 贪婪算法。据上动态算法可知，大于3的时候，尽量分为长度为3的段。
+
+```javaScript
+function LineMax(n) {
+    if (n < 2) {
+        return 0
+    }
+    if (n == 2) {
+        return 1
+    }
+    if (n == 3) {
+        return 2
+    }
+    let max = 1
+    while (n > 3) {
+        n = n - 3
+        max = max * 3
+    }
+    return max * n
+}
+```
