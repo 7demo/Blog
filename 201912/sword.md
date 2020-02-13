@@ -598,3 +598,31 @@ function getM(list) {
 
 }
 ```
+
+> 23. 寻找链表中的入口环点
+
+> 在限制空间的情况下，确定是否有环：两个指针，从开始一个指针每次走一步，另外一个指针每次走两步。如果走得快的指针赶上或者超过。那么就是有环存在。具体：
+
+> 1. 设定两个指针分别为slow与fast，一个速度为1，一个速度为2。在存在环点x的情况下，假设环的周长为c。两个指针相遇在b点。假设从开始到x点的长度为x， 从x点到b点的长为b。
+
+> 2. 相遇时，fast走了x+nc+b，而slow走了x+b。因为fast是slow速度的两倍，x+nc+b = 2*(x+b)，得到x=nc-b。这里的nc-b就是环的n个周长减去b的长度，也是fast从b点走nc-b的长度，此时如果slow从0开始走到x点，两个则必会相遇到x点。注意此时，因为长度一致，所以此时走路速度是一样的。
+
+```javaScript
+function getX(list) {
+    let slow = list
+    let fast = list
+    while (true) {
+        slow = slow.next
+        fast = fast.next.next
+        if (slow.val == fast.val) {
+            break
+        }
+    }
+    slow = list
+    while (slow.val != fast.val) {
+        slow = slow.next
+        fast = fast.next
+    }
+    return slow
+}
+```
