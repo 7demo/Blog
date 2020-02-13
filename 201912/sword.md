@@ -411,3 +411,190 @@ function LineMax(n) {
     return max
 }
 ```
+
+> 19 正则表达式匹配
+
+> 主要是以模式中第二个值是否为*为作为切入点。
+
+```javaScript
+function matchStr(str, mode) {
+    if (!str) {
+        if (!mode) {
+            return true
+        } else {
+            let index = 0
+            while (index < mode.length - 1) {
+                if (mode[index + 1] == '*') {
+                    index= index + 2
+                } else {
+                    return false
+                }
+            }
+            return true
+        }
+    }
+    if (!mode && str) {
+        return false
+    }
+    let strIndex = 0
+    let modeIndex = 0
+    while (strIndex < str.length && modeIndex < mode.length) {
+        if (mode[modeIndex + 1] == '*') {
+            if (str[strIndex] == mode[modeIndex]) {
+                strIndex++
+            } else {
+                strIndex++
+                modeIndex = modeIndex+2
+            }
+        } else {
+            if (str[strIndex] == mode[modeIndex]) {
+                strIndex++
+                modeIndex++
+            } else {
+                return false
+            }
+        }
+    }
+    return true
+}
+```
+
+> 20 判断一个字符串是否一个数值
+
+> 特殊情况：第一位有正负号；遇到指数情况，指数的值必须大于小数点距离e的距离。
+
+> 思路：一个字符串分为三个部分：整数、小数、指数。
+
+```javaScript
+ /* 正负号只能有一个且只能在第一位
+    * 指数后面必须有数字
+    * .23 视为小数
+     需要注意的是 字符串与字符串相比较会两个先转assci码进行比较。而字符串与数字比较只有字符串转assci。
+    */
+function check(str) {
+    if (!str && str !== '0') {
+        return false
+    }
+    let pointIndex = -1
+    let exIndex = -1
+    let sign = -1
+    for (let i = 0; i < str.length; i++) {
+        if (str[i] == '+' || str[i] == '-') {
+            exIndex = i
+        } else if (str[i] == 'E' || str[i] == 'e') {
+            if (exIndex > -1) {
+                return false
+            }
+            if (str[i + 1] < 0 || str[i + 1] > 9 || !str[i + 1] ) {
+                return false
+            } else {
+                exIndex = i
+            }
+        } else if (str[i] == '.') {
+            if (pointIndex > -1) {
+                return false
+            }
+            pointIndex = i
+        } else if (str[i] < 0 || str[i] > 9) {
+            return false
+        } else {
+            continue
+        }
+    }
+    return true
+}
+```
+
+> 21. 调整数组顺序使奇数位于偶数前面
+
+```javaScript
+function sort(arr, helper) {
+    let start = 0
+    let end = arr.length - 1
+    while (start < end) {
+        if (helper(arr[start])) {
+            if (helper(arr[end])) {
+                end --
+            } else {
+                let tmp = arr[start]
+                arr[start] = arr[end]
+                arr[end] = tmp
+                start++
+            }
+        } else {
+            start++
+        }
+    }
+    return arr
+}
+function helper(nun) {
+    return (nun & 1) == 0
+}
+```
+
+> 22. 链表中的倒数第K个节点
+
+> 第一个简单思路就是，第一次遍历链表得到链表的长度n，那么倒数k就是n-k+1。但是这样会循环遍历两次。
+
+> 第二个思路：有两个指针，开始循环时，一个指针正常遍历，直到到k-1位置，此时两个指针的间距为k。然后下次遍历，两个指针则一起递增，直至第一个指针遍历结束。
+
+```javaScript
+function Node (val) {
+    this.val = val
+    this.next = null
+}
+function List() {
+    this.list = null
+}
+List.prototype.append = function (num) {
+    if (!this.list) {
+        this.list = new Node(num)
+    } else {
+        let tmp = this.list
+        while (tmp.next) {
+            tmp = tmp.next
+        }
+        tmp.next = new Node(num)
+    }
+}
+
+function getK(list, k) {
+    let index1 = 0
+    let index2 = 0
+    let ret = list
+    while (list && list.next) {
+        if (index2 == index1 + k - 1) {
+            index1++
+            ret = ret.next
+        }
+        index2++
+        list = list.next
+    }
+    return ret
+
+}
+let list = new List()
+for (let i = 0 ; i < 9; i++) {
+    list.append(i)
+}
+```
+
+> 22.1 链表如果为奇数，则返回中间那个，如果为偶数，则返回中间的任意一个。
+
+> 同样，采用双指针，一个指针每次走一步，而另外一个指针走两步。
+
+```javaScript
+function getM(list) {
+    let ret1 = list
+    let ret2 = list
+    while (ret2 && ret2.next) {
+        ret2 = ret2.next
+        if (ret2) {
+            ret2 = ret2.next
+        }
+        ret1 = ret1.next
+    }
+    return ret1
+
+}
+```
