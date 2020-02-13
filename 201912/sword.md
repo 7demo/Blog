@@ -649,3 +649,91 @@ function trunList(list){
     return list
 }
 ```
+
+> 25. 合并排序链表
+
+```javaScript
+function merge(list1, list2){
+    // 最终结构
+    let ret
+    // 保存当前指针节点
+    let ex
+    // 从两个链表中拿到的节点
+    let tmp
+    while (list1 || list2) {
+        if (list1 && list2) {
+            if (list1.val > list2.val) {
+                tmp = list2
+                list2 = list2.next
+            } else {
+                tmp = list1
+                list1 = list1.next
+            }
+        } else {
+            if (!list1 && list2) {
+                tmp = list2
+                list2 = list2.next
+            } else {
+                tmp = list1
+                list1 = list1.next
+            }
+        }
+        // 第一个节点
+        // 当然指针也是在第一个节点
+        if (!ret) {
+            ret = tmp
+            ex = tmp
+        } else {
+            // 把当前的指针的next执行新拿到的节点
+            ex.next = tmp
+            // 重新保存指针节点
+            ex = tmp
+        }
+
+    }
+    return ret
+}
+```
+
+> 26. 树的子结构
+
+```javaScript
+function check(tree1, tree2) {
+    if (!tree2) {
+        return true
+    }
+    if (!tree1 && tree2) {
+        return false
+    }
+    let flag
+    if (tree1.value == tree2.value) {
+        flag = (check(tree1.left,tree2.left) && check(tree1.right,tree2.right)) || check(tree1.left,tree2) || check(tree1.right,tree2)
+    } else {
+        flag = check(tree1.left,tree2) || check(tree1.right,tree2)
+    }
+    return flag
+}
+
+function check(tree1, tree2) {
+    if (!tree2) {
+        return true
+    }
+    if (!tree1 && tree2) {
+        return false
+    }
+    let flag
+    if (tree1.value == tree2.value) {
+        let flagLeft = check(tree1.left,tree2.left)
+        let flagRight = check(tree1.right,tree2.right)
+        if (!flagLeft || !flagRight) {
+            flagLeft = check(tree1.left,tree2)
+        }
+        flag = flagLeft || flagRight
+    } else {
+        flag = check(tree1.left,tree2) || check(tree1.right,tree2)
+    }
+    return flag
+}
+```
+
+
