@@ -626,3 +626,26 @@ function getX(list) {
     return slow
 }
 ```
+
+> 24. 翻转链表
+
+> 不采用堆栈，采用断开下个连接，调整当前与之前的关系。
+
+```javaScript
+function trunList(list){
+    let pre = null
+    let next = list.next
+    while (true) {
+        list.next = pre
+        pre = list
+        // 如果next不存在 则到最深，则要跳出循环
+        if (next) {
+            list = next
+            next = next.next
+        } else {
+            break;
+        }
+    }
+    return list
+}
+```
