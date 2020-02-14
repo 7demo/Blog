@@ -789,3 +789,119 @@ function check1(list) {
     }
 }
 ```
+
+> 29.顺时针打印矩阵
+
+```javaScript
+function print(arr) {
+    // 左上坐标
+    // 右下坐标
+    let xLen = arr[0].length
+    let yLen = arr.length
+    let xStart = 0
+    let yStart = 0
+    // 指针
+    let x = 0
+    let y = 0
+    // 最后的个数
+    let num = xLen * yLen
+    let ret = []
+    // 分别表示当前应该变化是那一边
+    let xFlag = true
+    let yFlag = false
+    let lFlag = false
+    let tFlag = false
+    while (ret.length < num) {
+        ret.push(arr[y][x])
+        // 代表x参数变化
+        if (xFlag && !yFlag && !lFlag && !tFlag) {
+            if (x < xLen - 1) {
+                x++
+            } else if (x == xLen - 1) {
+                xFlag = false
+                yFlag = true
+                xLen--
+                y++
+            }
+        // 代表y参数变化
+        } else if (!xFlag && yFlag && !lFlag && !tFlag) {
+            if (y < yLen - 1) {
+                y ++
+            } else if (y == yLen -1) {
+                yFlag = false
+                lFlag = true
+                yLen--
+                x--
+            }
+        } else if (!xFlag && !yFlag && lFlag && !tFlag) {
+            if (x > xStart) {
+                x--
+            } else if(x == xStart) {
+                lFlag = false
+                tFlag = true
+                yStart++
+                y--
+            }
+        } else if (!xFlag && !yFlag && !lFlag && tFlag) {
+            if (y > yStart) {
+                y--
+            } else if(y == yStart) {
+                xFlag = true
+                tFlag = false
+                x++
+                xStart++
+                yStart++
+            }
+        }
+    }
+    return ret
+}
+```
+
+> 也可以：1，每次都是以左上角打印一圈，2，递增左上角坐标进行边界控制。
+
+```javaScript
+function print(arr) {
+    let ret = []
+    let start = 0
+    let xLen = arr[0].length
+    let yLen = arr.length
+    while (2*start < xLen && 2*start < yLen) {
+        ret.push(...helper(start, xLen, yLen, arr))
+        start++
+        xLen--
+        yLen--
+    }
+    return ret
+}
+function helper(start, xLen, yLen, arr) {
+    let ret = []
+    // 打印左到右
+    for (let i = start; i < xLen; i++) {
+        ret.push(arr[start][i])
+    }
+    // 打印从上到下
+    // 前提条件是只少有两行
+    if (start < yLen) {
+        for (let i = start + 1; i < yLen; i++) {
+            ret.push(arr[i][xLen - 1])
+        }
+    }
+    // 打印从右到左
+    // 前提条件是只少有两行
+    if (start < yLen) {
+        for (let i = xLen - 2; i >= start; i--) {
+            ret.push(arr[yLen - 1][i])
+        }
+    }
+
+    // 打印从下到上
+    // 前提条件是只少有两行
+    if (start < yLen) {
+        for (let i = yLen - 2; i > start; i--) {
+            ret.push(arr[i][start])
+        }
+    }
+    return ret
+}
+```
