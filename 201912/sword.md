@@ -736,4 +736,56 @@ function check(tree1, tree2) {
 }
 ```
 
+> 27. 二叉树镜像
 
+```javaScript
+function turn(list) {
+    if (!list) {
+        return list
+    }
+    let tmp = list.left
+    list.left = turn(list.right)
+    list.right = turn(tmp)
+    return list
+}
+```
+
+> 28. 对称二叉树
+
+> 对称二叉树是本身与镜像一样。前序遍历二叉树是先根节点再左树再右树，如果这样得到的值与先根节点再右树再左树的节点值一样，那么就是对称二叉树。
+
+```javaScript
+function check(list) {
+    let tra1 = helperL(list)
+    let tra2 = helperR(list)
+    if (tra1.join('') == tra2.join('')) {
+        return true
+    } else {
+        return false
+    }
+
+}
+function helperL(list) {
+    if (!list) {
+        return []
+    }
+    return [list.value, ...helperL(list.left), ...helperL(list.right)]
+}
+function helperR(list) {
+    if (!list) {
+        return []
+    }
+    return [list.value, ...helperR(list.right), ...helperR(list.left)]
+}
+// 因为如果相对称的话，左树的值与右树的值必定是一样对称的。所以左树按照正常的前序遍历，而右树按照定制的前序遍历，对比即可。整体少遍历一遍。
+
+function check1(list) {
+    let left = helperL(list.left)
+    let right = helperR(list.right)
+    if (left.join('') == right.join('')) {
+        return true
+    } else {
+        return false
+    }
+}
+```
