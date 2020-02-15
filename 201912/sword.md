@@ -905,3 +905,33 @@ function helper(start, xLen, yLen, arr) {
     return ret
 }
 ```
+
+> 栈的压入与弹出序列。
+
+```javascript
+// 其实按照arr1的顺序，压进新栈aim，过程中和期望的出栈顺序进行比较，一次对aim执行出栈操作。最后arr1, aim全为空
+function check(arr1, arr2){
+    // 按照出栈顺序保存的数组，为了和arr2进行比较
+    let tmp = []
+    // 辅助栈，为了按照arr1的顺序压进去
+    let aim = []
+    // 指示该出栈的索引值
+    let i = 0
+    while (arr1.length || aim.length) {
+        // 第一次肯定是进栈
+        if (aim.length == 0) {
+            aim.push(arr1.shift())
+        } else {
+            // 如果辅助栈最后一位，就是出栈的一位与期望的顺序不一致，并且arr1仍然有值，则把arr1全部按照顺序放进aim
+            if (aim[aim.length - 1] != arr2[i] && arr1.length) {
+                aim.push(arr1.shift())
+            // 如果aim的最后一位恰好与该出栈的一位一致，则出栈。出栈索引++
+            } else {
+                tmp.push(aim.pop())
+                i++
+            }
+        }
+    }
+    return tmp.join('') == arr2.join('')
+}
+```
