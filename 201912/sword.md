@@ -906,7 +906,7 @@ function helper(start, xLen, yLen, arr) {
 }
 ```
 
-> 栈的压入与弹出序列。
+> 31.栈的压入与弹出序列。
 
 ```javascript
 // 其实按照arr1的顺序，压进新栈aim，过程中和期望的出栈顺序进行比较，一次对aim执行出栈操作。最后arr1, aim全为空
@@ -933,5 +933,28 @@ function check(arr1, arr2){
         }
     }
     return tmp.join('') == arr2.join('')
+}
+```
+
+> 32.从上到下打印二叉树
+
+```javaScript
+function getVal(tree){
+    let arr = [tree]
+    let ret = []
+    let i = 0
+    while (i < arr.length) {
+        if (Object.prototype.toString.call(arr[i]) == '[object Object]') {
+            ret.push(arr[i].value)
+            if (arr[i].left !== undefined) {
+                arr.push(arr[i].left)
+            }
+            if (arr[i].right !== undefined) {
+                arr.push(arr[i].right)
+            }
+            i++
+        }
+    }
+    return ret
 }
 ```
