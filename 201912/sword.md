@@ -958,3 +958,27 @@ function getVal(tree){
     return ret
 }
 ```
+
+> 34.二叉树的和为某一路径的值
+
+```javaScript
+function getPath(tree, num){
+    let allPath = []
+    let path = []
+    function helper(tree, num) {
+        if (!tree) {
+            return
+        }
+        path.push(tree.value)
+        num -= tree.value
+        if (tree.left == null && tree.right == null && num == 0) {
+            allPath.push([...path])
+        }
+        helper(tree.left, num)
+        helper(tree.right, num)
+        path.pop()
+    }
+    helper(tree, num)
+    return allPath
+}
+```
