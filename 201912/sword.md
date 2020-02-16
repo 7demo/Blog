@@ -982,3 +982,68 @@ function getPath(tree, num){
     return allPath
 }
 ```
+
+> 35.复杂链表的复制
+
+```javaScript
+// 空间换时间，遍历两次，一次生成链表，同时保存一个hash表来存各个节点。再次遍历指向sib
+function clone(list) {
+    let obj = {}
+    let node
+    let tmp // 指向当前指针
+    let cur = list
+    while (cur) {
+        let _node = new Node(cur.value)
+        obj[cur.value] = _node
+        if (!node) {
+            node = _node
+            tmp = _node
+        } else {
+            tmp.next = _node
+            tmp = _node
+        }
+        cur = cur.next
+    }
+    let nsib = node
+    let sib = list
+    while (sib) {
+        if (sib.sib) {
+            nsib.sib = obj[sib.sib.value]
+        }
+        sib = sib.next
+        nsib = nsib.next
+    }
+    return node
+}
+
+// 方法二
+
+function clone(list) {
+    let cur = list
+    // 每个节点后都复制一个节点进行查 如A-B-C变成A-A`-B-B`-C-C`
+    while (cur) {
+        let node = new Node(cur.value)
+        let tmp  = cur.next
+        cur.next = node
+        node.next = tmp
+        cur = tmp
+    }
+    // 如果ABC的指向设置A`B`C`的指向（都在其ABC下一级）
+    let sib = list
+    while(sib) {
+        if (sib.sib) {
+            let m = sib.sib
+            sib.next.sib = m.next
+        }
+        sib = sib.next.next
+    }
+    // 拆分链表
+    let node = list.next
+    let index = list.next
+    if (index.next) {
+        index = index.next.next
+        node.next = index
+    }
+    return node
+}
+```
