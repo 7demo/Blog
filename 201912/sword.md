@@ -1047,3 +1047,30 @@ function clone(list) {
     return node
 }
 ```
+
+> 36. 二叉树搜索树转成链表
+
+> 中序遍历后，遍历调整指针
+
+```javaScript
+function ch(tree) {
+    function helper(tree1) {
+        let tt = []
+        if (!tree1) {
+            return []
+        }
+        tt.push(...helper(tree1.left), tree1, ...helper(tree1.right))
+        return tt
+    }
+    let ret = helper(tree)
+    for (let i = 0; i < ret.length; i++) {
+        if (ret[i - 1]) {
+            ret[i].left = ret[i-1]
+        }
+        if (ret[i + 1]) {
+            ret[i].right = ret[i+1]
+        }
+    }
+    return tree
+}
+```
