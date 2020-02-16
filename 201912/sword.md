@@ -1073,4 +1073,35 @@ function ch(tree) {
     }
     return tree
 }
+
+// 处理左树，左树成链表，把左树的最右连接到root
+// 处理右树，右树成链表，把右树的最左连接到root
+function co(tree) {
+    if (!tree) {
+        return null
+    }
+    if (!tree.left && !tree.right) {
+        return tree
+    }
+
+    let left = co(tree.left)
+    let right = co(tree.right)
+
+    let tmp = left
+    while (tmp && tmp.right) {
+        tmp = tmp.right
+    }
+
+    if (tmp) {
+        tmp.right = tree
+        tree.left = tmp
+    }
+
+    if (right) {
+        right.left = tree
+        tree.right = right
+    }
+    return left ? left : tree
+
+}
 ```
