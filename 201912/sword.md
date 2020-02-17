@@ -1105,3 +1105,35 @@ function co(tree) {
 
 }
 ```
+
+> 37.序列化二叉树
+
+> 遍历二叉树时，遍历到叶节点（null）,用特殊符号表示。
+
+```javaScript
+function ser(tree) {
+    if (!tree) {
+        return ['$']
+    }
+    let ret = []
+    ret = [tree.value, ...ser(tree.left), ...ser(tree.right)]
+    return ret
+}
+// [10, 6, 4, "$", "$", "$", 14, 12, "$", "$", 16, "$", "$"]
+// 如果数组的第一次数字有值得话，根据结果是前序，所以这个值一定是左树的值。根据函数执行栈的特性，是先构建了10，在构建了10的左树6，在构建6的左树4，再构建4的左树￥，但是此时是$,所以不再增加函数栈，开始出一个栈，此时函数栈的栈顶的函数已经构建了4的左树（停止），再构建4的右树，因为是￥的原因所以不继续增加栈，则4树构建完，继续出栈。此时6的左树已经构建完毕，右树是￥。继续出，到10的左树构建完毕，开始构建右树。。。
+function deser(arr) {
+    if (!arr || !arr.length) {
+        return
+    }
+    let ret = null
+    let value = arr.shift()
+    if (value !== '$') {
+        ret = {
+            value: value
+        }
+        ret.left = deser(arr)
+        ret.right = deser(arr)
+    }
+    return ret
+}
+```
