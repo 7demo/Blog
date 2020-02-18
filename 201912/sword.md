@@ -1307,8 +1307,38 @@ function getNum2(arr) {
 }
 ```
 
-> 30. TopK。
+> 40. 最小的k个数字。
 
 ```javaScript
+function par(arr, i, j) {
+    let mid = i
+    let base = arr[(i+j)>>1]
+    while (i <= j) {
+        if (arr[i] < base) {
+            let tmp = arr[i]
+            arr[i] = arr[mid]
+            arr[mid] = tmp
+            mid++
+        }
+        i++
+    }
+    return mid
+}
+function topK(arr, k) {
+    let len = arr.length
+    let start = 0
+    let end = len - 1
 
+    while (start <= len) {
+        let index = par(arr, start, len)
+        if (index == k) {
+            return arr.slice(0,k)
+        } else if (index > k) {
+            len = index
+        } else {
+            start = index
+        }
+    }
+    return undefined
+}
 ```
