@@ -1137,3 +1137,178 @@ function deser(arr) {
     return ret
 }
 ```
+
+> 38.字符串排列
+
+> 38.1 字符串全排列
+
+```javaScript
+function print(str) {
+    let ret = []
+    for (let i = 0; i < str.length; i++) {
+        let _str = str.substr(0, i) + str.substr(i + 1)
+        let _arr = print(_str)
+        if (_arr.length) {
+            for (let j = 0; j < _arr.length; j++) {
+                ret.push(str[i] + _arr[j])
+            }
+        } else {
+            ret.push(str[i])
+        }
+    }
+    return ret
+}
+```
+
+> 38.2 字符串不全组合。比如 输入abc，可以打印a,b,c,ab,bc,ac,abc
+
+> 分别打印一位、两位、三位
+
+```javaScript
+function print(str) {
+    let ret = []
+    let step = 1
+    while (step <= str.length) {
+        for (let i = 0; i <= str.length - step; i++) {
+            ret.push(str.substr(i, step))
+        }
+        step++
+    }
+    return ret
+}
+```
+
+> 38.3 输入一个数组，有8个数字，能否放到一个正方体的八个顶点上。即是全排列(38.1)，然后判断是会否满足a1+a2+a3+a4=a5+a6+a7+a8/a1+a3+a5+a7=a8+a2+a4+a6/a1+a5+a6+a2=a3+a4+a7+a8
+
+> 38.4 八皇后问题。
+
+```javaScript
+function queue(arr) {
+    // 先找到1-8所有不同的组合
+    let tmp = print(arr.join(''))
+    // 过滤所有在一条对角线的
+    let ret = tmp.filter(item => {
+        if (check(item)) {
+            return false
+        }
+        return true
+    })
+    return ret
+}
+function check(item) {
+    let flag = false
+    let arr = item.split('')
+    for (let i = 0; i < arr.length - 1; i++) {
+        for (let j = i+1; j < arr.length; j++) {
+            if (Math.abs(j - i) == Math.abs(arr[j] - arr[i])) {
+                return true
+            }
+        }
+    }
+    return false
+}
+function print(str) {
+    let ret = []
+    for (let i = 0; i < str.length; i++) {
+        let _str = str.substr(0, i) + str.substr(i + 1)
+        let _arr = print(_str)
+        if (_arr.length) {
+            for (let j = 0; j < _arr.length; j++) {
+                ret.push(str[i] + _arr[j])
+            }
+        } else {
+            ret.push(str[i])
+        }
+    }
+    return ret
+}
+```
+
+> 39.数组中出现超过一半的数字，要求时间复杂度为O(N)。
+
+> 如果直接统计次数，则复杂度为O(N+M)，M是不同元素的个数。
+
+> 思路一：如果此数组是（部分）有序的，因为超过一半数字都是同一个数，所以该数字肯定在数组的中最中间，所以只需求中位数即可。
+
+```javaScript
+function partition(arr, i, j) {
+    let mid = i
+    let base = arr[i]
+    while (i <= j) {
+        if (arr[i] > base) {
+            let tmp = arr[i]
+            arr[i] = arr[mid]
+            arr[mid] = tmp
+            mid++
+        }
+        i++
+    }
+    return mid
+}
+function getNum(arr) {
+    let len = arr.length
+    let mid = len>>1
+    let start = 0
+    let end = len - 1
+    while (start != mid) {
+        let index = partition(arr, start, len)
+        if (index == mid || arr[index] == arr[mid]) {
+            return arr[mid]
+        } else if (index > mid) {
+            len = index
+        } else {
+            start = index
+        }
+    }
+    return arr[mid]
+}
+```
+
+> 思路二：计数。一个hash表存每个数出现的次数，遍历时对此操作，同时比较是否是出现最多的。
+
+```javaScript
+function getNum1(arr) {
+    let max = arr[0]
+    let map = {}
+    for (let i = 0; i < arr.length; i++) {
+        if (map[arr[i]] !== undefined) {
+            map[arr[i]] ++
+        } else {
+            map[arr[i]] = 1
+        }
+        if (map[arr[i]] > map[max]) {
+            max = arr[i]
+        }
+
+    }
+    return max
+}
+```
+
+> 思路三：如果计出现次数最多的数每个都为1的话，其他数字为-1。那么最后相加则肯定大于0。
+
+```javaScript
+function getNum2(arr) {
+    let num = 0
+    let count = 0
+    for (let i = 0; i < arr.length; i++) {
+        if (count == 0) {
+            num = arr[i]
+            count = 1
+        } else {
+            if (num == arr[i]) {
+                count++
+            } else {
+                count--
+            }
+        }
+    }
+    return num
+}
+```
+
+> 30. TopK。
+
+```javaScript
+
+```
