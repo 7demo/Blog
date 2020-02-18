@@ -1342,3 +1342,94 @@ function topK(arr, k) {
     return undefined
 }
 ```
+
+> 如果不能修改数组，则是堆+遍历的形式。
+
+> 41.数据流中的中位数。
+
+> 如果是一定量的数据个数是奇数，那么中位数是中间那个数，如果是偶数，中位数是中间两数字的平均值。所以在数组变化时，需要知道已经的两个指针，这个指针数组时偶数的时，分别指向中间两个数，左指针比左边的数都打，右指针比右边的数字都小；如果是奇数时，则两个指针是同一个值。终上，紧要的有两点：1，新值插入左侧还是右侧，2，因为数据流动在变，所以插入与查找都要求高效。最终采用大顶堆与小丁堆来实现——js上最大堆的构造复杂度为O(nlogn)。
+
+```javaScript
+// 大顶堆 与 小顶堆
+function Heap() {
+    this.data = []
+}
+Heap.prototype.insertMin = function(num) {
+    this.data.push(num)
+    this.checkMmin()
+}
+
+Heap.prototype.insertMax = function(num) {
+    this.data.push(num)
+    this.checkMax()
+}
+
+Heap.prototype.checkMax = function() {
+    let data = this.data
+    for (let i = 1; i < data.length; i++) {
+        let cur = i
+        let parent = (cur - 1)>>1
+        while (data[cur] > data[parent]) {
+            swap(data, cur, parent)
+            cur = parent
+            parent = (cur - 1)>>1
+        }
+    }
+    this.data = data
+    return data
+}
+Heap.prototype.checkMmin = function() {
+    let data = this.data
+    for (let i = 1; i < data.length; i++) {
+        let cur = i
+        let parent = (cur - 1)>>1
+        while (data[cur] < data[parent]) {
+            swap(data, cur, parent)
+            cur = parent
+            parent = (cur - 1)>>1
+        }
+    }
+    this.data = data
+    return data
+}
+Heap.prototype.pop = function() {
+    let num = this.data.shift()
+    return num
+}
+let maxHeap = new Heap()
+let minHeap = new Heap()
+let count = 0
+// 设定奇数时 只插入最大堆
+function getMid(num) {
+    // 新插入值为奇数
+    if ((count & 1) == 0) {
+        let min = minHeap.data[0] || 0
+        if (num < min || min == 0) {
+            maxHeap.insertMax(num)
+        } else {
+            let _min = minHeap.pop() || 0
+            minHeap.insertMin(num)
+            maxHeap.insertMax(_min)
+        }
+    } else {
+        let max = minHeap.data[0] || 0
+        if (max > num) {
+            let _max = maxHeapx.pop()
+            minHeap.insertMin(_max)
+            maxHeap.insertMax(num)
+        } else {
+            minHeap.insertMin(num)
+        }
+    }
+    count++
+    // 现在整个为偶数
+    if ((count & 1) == 0 && count > 1) {
+        let min = minHeap.data[0]
+        let max = maxHeap.data[0]
+        return (min+max)/2
+    } else {
+        return maxHeap.data[0]
+    }
+}
+
+```
