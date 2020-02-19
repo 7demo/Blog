@@ -1478,3 +1478,44 @@ function getVD(arr) {
     return max
 }
 ```
+
+> 43. 1-n整数中，1出现的次数。
+
+> 个数数字，相当于1-10中：个位上1出现了一次。
+
+> 十位数字，相当于1-100中：十位上1出现了10次
+
+> 百位数字，相当于1-1000中，百位数1出现了100次
+
+> 所以对于数字n（比如2134），从最右i开始数，i=1。
+
+> 如果第i位的数字大于1，则第i位1的个数为（最高位+1）* 10^i-1（最高位就是从i+1位起到最高位，比如213）
+
+> 如果第i位数字小于1，则i位1的个数为（最高位）*10^i-1
+
+> 如果第i位数字等于1，则位1的个数为 最高位）*10^i-1   +  (低位数+1)。低位数是i-1位直到个数如，在算2134时百位1的个数为2\*10^2+(34+1)
+
+```javaScript
+function getNum(num) {
+    num = num + ''
+    let len = num.length
+    let ret = 0
+    let i = 1
+    while (i <= len) {
+        let cur = num[len - i]
+        if (cur > 1) {
+            let hight = num.substr(0, len - i)
+            ret += (hight/1 + 1) * Math.pow(10, i - 1)
+        } else if (cur < 1) {
+            let hight = num.substr(0, len - i)
+            ret += (hight/1) * Math.pow(10, i - 1)
+        } else {
+            let hight = num.substr(0, len - i)
+            let low = num.substr(len - i + 1)
+            ret += (hight/1) * Math.pow(10, i - 1) + low/1 + 1
+        }
+        i++
+    }
+    return ret
+}
+```
