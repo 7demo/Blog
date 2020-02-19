@@ -1519,3 +1519,31 @@ function getNum(num) {
     return ret
 }
 ```
+
+> 44.数字序列中某一位的数字
+
+> 除了前十位数字外，10-99有9\*10\*2数字，100-999有9\*100\*3数字。相当于两位数有9\*(10^1)\*2个、三位数有9\*(10^2)\*3...即，n位数有9\*(10^n-1\*n)个。
+
+```javaScript
+function getNum(num) {
+    if (num < 10) {
+        return num - 1
+    }
+    let i = 2
+    // 减去个数为
+    num = num - 10
+    // 如果大于个数小于n位数所占的个数，减去n位数所占的个数，则位数加1
+    while (num > 9 * Math.pow(10, i - 1) * i) {
+        num -= 9 * Math.pow(10, i - 1) * i
+        i++
+    }
+    // 算出当前位数下，所求值为所占该数的第几个。如num=811, num=3, 那s=1
+    let s = num % i
+    // count 计算出当前位数i下的个数
+    let count = (num - s)/i
+    // ret为初始num的真实值
+    let ret = count + Math.pow(10, i - 1) + ''
+    return ret[s]
+
+}
+```
