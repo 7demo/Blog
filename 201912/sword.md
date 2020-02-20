@@ -1608,3 +1608,44 @@ function gn(arr) {
     return ret/1
 }
 ```
+
+> 46. 数字翻译成字符串
+
+> 动态规划。比如12258，可以分解为1与2258+12与258.然后继续分解下去
+
+```javaScript
+function tran(num) {
+    if (!num) {
+        return ''
+    }
+    let dict = 'abcdefjhigklmnopqrstuvwxyz'
+    num = num + ''
+    let ret = []
+    if (num.length < 2) {
+        return [dict[num/1]]
+    } else {
+        let head = num.substr(0, 2) / 1
+        if (head < 26) {
+            let res = tran(num.substr(1))
+            let first = dict[num[0]/1]
+            for (let i = 0; i < res.length; i++) {
+                ret.push(first+res[i])
+            }
+
+
+            let res2 = tran(num.substr(2))
+            let first2 = dict[[num.substr(0,2)]/1]
+            for (let i = 0; i < res2.length; i++) {
+                ret.push(first2+res2[i])
+            }
+        } else {
+            let res = tran(num.substr(1))
+            let first = dict[num[0]/1]
+            for (let k = 0; k < res.length; k++) {
+                ret.push(first+res[k])
+            }
+        }
+    }
+    return ret
+}
+```
