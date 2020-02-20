@@ -1649,3 +1649,46 @@ function tran(num) {
     return ret
 }
 ```
+
+> 47.礼物的最大价值
+
+```javaScript
+let arr = [
+    [1,10,3,8],
+    [12,2,9,6],
+    [5,7,4,11],
+    [3,7,16,5]
+]
+
+function getMax(arr) {
+    let ret = arr[0][0]
+    let yEnd = arr.length
+    let xEnd = arr[0].length
+    let x = 0
+    let y = 0
+    while (x < xEnd - 1 || y < yEnd - 1) {
+        if (x + 1 == xEnd) {
+            ret += arr[y+1][x]
+            y++
+            continue
+        }
+
+        if (y + 1 == yEnd) {
+            ret += arr[y][x+1]
+            x++
+            continue
+        }
+
+        let right = arr[y][x+1]
+        let down = arr[y+1][x]
+        if (right > down) {
+            ret += right
+            x++
+        } else {
+            ret += down
+            y++
+        }
+    }
+    return ret
+}
+```
