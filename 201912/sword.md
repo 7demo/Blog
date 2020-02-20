@@ -1725,3 +1725,37 @@ function getLongStr(str) {
     return tmp
 }
 ```
+
+> 49.丑数。
+
+```javaScript
+function getUgly(num) {
+    if (num == 0) {
+        return 0
+    }
+    // t2 t3 t5表示数组中 乘以2 、3、5刚好达到最大丑数的位置
+    let t2 = t3 = t5 = 0
+    let ret = [1]
+    let i = 1
+    // 每次寻找刚好达到的最大丑数
+    // 更新t2 t3  t5的位置
+    while (i < num) {
+        let m2 = 2 * ret[t2]
+        let m3 = 3 * ret[t3]
+        let m5 = 5 * ret[t5]
+        let min = Math.min(m2, m3, m5)
+        ret.push(min)
+        while (ret[t2] * 2 <= min) {
+            t2++
+        }
+        while (ret[t3] * 3 <= min) {
+            t3++
+        }
+        while (ret[t5] * 5 <= min) {
+            t5++
+        }
+        i++
+    }
+    return ret[num - 1]
+}
+```
