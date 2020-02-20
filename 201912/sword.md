@@ -1547,3 +1547,64 @@ function getNum(num) {
 
 }
 ```
+
+> 45.把数组排成最小的数
+
+> 思路一：根据每个数字的最高位从0-9进行归类，每类再进行大小排序。那么最后遍历生成的值就是最下。复杂度为地一遍遍历O(N) + 第二次遍历O(NlogN) + O（N）
+
+```javaScript
+function getNum(arr) {
+    let map = {}
+    for (let i = 0; i < arr.length; i++) {
+        let num = arr[i] + ''
+        if (map[num[0]]) {
+            map[num[0]].push(arr[i])
+        } else {
+            map[num[0]] = [arr[i]]
+        }
+    }
+    let ret = ''
+    for (let i in map) {
+        map[i] = map[i].sort()
+        for (let j = 0; j < map[i].length; j++) {
+            ret += map[i][j]
+        }
+    }
+    return ret/1
+}
+```
+
+> 思路二：把数组中的每个数字都变成字符串，然后按照从小到大排序，其实就是转成首位(一次降低)按照ASCII值得比较排序，最后拼成字符串数字即可。比如'13'的ASCII的值是小于'7'的ASCII的值。时间复杂度为O(nlogn)，就是快排。
+
+```javaScript
+function sort(arr) {
+    if (arr.length < 2) {
+        return arr
+    }
+    let ret = []
+    let mid = arr.length >> 1
+    let base = arr[mid] + ''
+    let left = []
+    let right = []
+    for (let i = 0; i < arr.length; i++) {
+        let num = arr[i] + ''
+        if (num < base) {
+            left.push(num)
+        } else if(num > base) {
+            right.push(num)
+        }
+    }
+    left = sort(left)
+    right = sort(right)
+    ret = [...left, base, ...right]
+    return ret
+}
+function gn(arr) {
+    let tmp = sort(arr)
+    let ret = ''
+    for (let j = 0; j < tmp.length; j++) {
+        ret += tmp[j]
+    }
+    return ret/1
+}
+```
