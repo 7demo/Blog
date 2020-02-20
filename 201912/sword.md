@@ -1692,3 +1692,36 @@ function getMax(arr) {
     return ret
 }
 ```
+
+> 48. 最长不含重复字符串的子字符串。由a-z组成。
+
+```javascript
+function getLongStr(str) {
+    let position = {}
+    let ret = ''
+    let tmp = ''
+    for (let i = 0; i < str.length; i++) {
+        let cur = str[i]
+        // 如果当前字母没有出现过，则直接累加
+        if (position[cur] === undefined) {
+            position[cur] = i
+            ret += cur
+        } else {
+            let prePosition = position[cur]
+            // 当前字母距离上次的字母距离大于现在最长字符串的长度，那么说明当前字母上次没有出现在现最长字符串中，则可以直接加
+            if (i- prePosition > ret.length) {
+                position[cur] = i
+                ret += cur
+            // 如果当前字母距离上次的字母距离小于长度，说明这个字母在最长的中
+            } else {
+                position[cur] = i
+                ret = str.substr(prePosition, i - prePosition)
+            }
+        }
+        if (tmp.length <= ret.length) {
+            tmp = ret
+        }
+    }
+    return tmp
+}
+```
