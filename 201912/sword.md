@@ -1759,3 +1759,99 @@ function getUgly(num) {
     return ret[num - 1]
 }
 ```
+
+> 50.第一个只出现一次的字符
+
+```javaScript
+function getFirstLetter(str) {
+    let map = {}
+    for (let i = 0; i < str.length; i++) {
+        let letter = str[i]
+        if (map[letter] === undefined) {
+            map[letter] = 1
+        } else {
+            map[letter]++
+        }
+    }
+    for (let i = 0; i < str.length; i++) {
+        let letter = str[i]
+        if (map[letter] === 1) {
+            return letter
+        }
+    }
+    return ''
+}
+```
+
+> 50.1 判断两个单词是否为变位词
+
+```javaScript
+function check(str1, str2) {
+    if (str1.length !== str2.length) {
+        return false
+    }
+    let map = {}
+    for (let i = 0; i < str1.length; i++) {
+        let letter = str[i]
+        if (map[letter] === undefined) {
+            map[letter] = 1
+        } else {
+            map[letter]++
+        }
+    }
+    for (let i = 0; i < str2.length; i++) {
+        let letter = str[i]
+        if (map[letter] !== undefined) {
+            map[letter]--
+        }
+    }
+    let flag = true
+    for (let i in map) {
+        if (map[i] != 0) {
+            flag = false
+        }
+    }
+    return flag
+}
+```
+
+> 51. 数组中的逆序对
+
+> 如果单纯遍历两次，则最终复杂度为O(n^2)。这里可以按照合并排序的方式来处理。比如数组[7，5，6，4]
+
+> 可以把数组分成两个数组，一直分下去只至最后一个处理单位。[7]与[5]，5与7进行比较，可以得到一对符合要求的逆序。同时返回[5,7]，同样6与4也如此操作，又一对符合要求的逆序[4,6]。然后有两个指针，分别指向7与6，比较7与6，因为7大于6，所以可以得到2对，这里2是因为后面的数组[4,6]的长度为2。依次递归。
+
+```javaScript
+function check(arr) {
+    let ret = 0
+    let a = helper(arr)
+    function helper(arr) {
+        if (!arr || arr.length < 2) {
+            return arr
+        }
+        let tmp = []
+        let start = 0
+        let end = arr.length
+        let mid = (start + end) >> 1
+        let left = helper(arr.slice(start, mid))
+        let right = helper(arr.slice(mid))
+
+        let lx = left.length - 1
+        let rx = right.length - 1
+
+        while (lx >= 0 || rx >= 0) {
+            if (left[lx] > right[rx]) {
+                tmp.unshift(left[lx])
+                ret = rx + 1 + ret
+                lx --
+            } else {
+                tmp.unshift(right[rx])
+                rx --
+            }
+        }
+        return tmp
+
+    }
+    return ret
+}
+```
