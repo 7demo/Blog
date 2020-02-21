@@ -1942,3 +1942,73 @@ function getCommon(list1, list2) {
     }
 }
 ```
+
+> 53.在排序数组中查找数字，就是查找某数字出现的次数。
+
+> 排出使用遍历O(N)。那就是查找某数字出现最小的下标与最大的下标。二分法查找第一个与最后一个。
+
+```javaScript
+function getNumCount(arr, num) {
+    let l = getFirstK(arr, num)
+    let r = getLastK(arr, num)
+    return r - l + 1
+}
+
+function getFirstK(arr, num) {
+    let l = -1
+    let start = 0
+    let len = arr.length
+    while (start < len - 1) {
+        let mid = (start + len) >> 1
+        let base = arr[mid]
+        // 数据在左侧
+        if (base < num) {
+            start = mid
+        // 数据在右侧
+        } else if (base > num) {
+            len = mid
+        // 刚好相等
+        } else {
+            // 目标数据刚好在最左侧
+            if (mid - 1 < 0 || arr[mid - 1] != num) {
+                l = mid
+                start = mid
+                break
+            } else {
+                len = mid
+            }
+        }
+    }
+    return l
+}
+
+function getLastK(arr, num) {
+    let r = -1
+    let start = 0
+    let len = arr.length
+    while (start < len - 1) {
+        let mid = (start + len) >> 1
+        let base = arr[mid]
+        // 数据在左侧
+        if (base < num) {
+            start = mid
+        // 数据在右侧
+        } else if (base > num) {
+            len = mid
+        // 刚好相等
+        } else {
+            console.log(start, mid, len, arr[mid + 1])
+            // 目标数据刚好在最右侧
+            if (mid + 1 >= len || arr[mid + 1] != num) {
+                r = mid
+                break
+            } else {
+                start = mid
+            }
+        }
+    }
+    return r
+}
+```
+
+
