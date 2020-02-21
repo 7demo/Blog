@@ -1855,3 +1855,90 @@ function check(arr) {
     return ret
 }
 ```
+
+> 52.两个链表中的第一个公共节点
+
+> 要使用非暴力方法外，要知道公共节点的链表一个很重要的特性：就是两个链表组成一个Y字，分别从两个链表head开始查，必将在公共节点交汇后，一直到最后。
+
+> 思路一：遍历两个链表，各自的节点分别存入栈。遍历完，根据先进后出的原则，两个栈栈顶的元素必定相等，则继续判断。直至最后一个相等。这个算法时间复杂度为O(M+N),空间复杂度为O(M+N)
+
+> 思路二：遍历获得两个长度，如果长度一致，那么两个一致遍历时就会遇到相同。如果A长于B,A可以先遍历A-B节点，再一起。
+
+```javaScript
+function getCommon(list1, list2) {
+    let arr1 = []
+    let arr2 = []
+
+    let cur1 = list1
+    let cur2 = list2
+    while (cur1) {
+        arr1.push(cur1.value)
+        cur1 = cur1.next
+    }
+
+    while (cur2) {
+        arr2.push(cur2.value)
+        cur2 = cur2.next
+    }
+    let ret
+    let po1
+    let po2
+    while (arr1.length || arr2.length) {
+        po1 = arr1.pop()
+        po2 = arr2.pop()
+        if (po1 == po2) {
+            ret = po1
+        } else {
+            break
+        }
+    }
+    return ret
+}
+
+function getCommon(list1, list2) {
+    let len1 = 0
+    let len2 = 0
+
+    let cur1 = list1
+    let cur2 = list2
+    while (cur1) {
+        len1++
+        cur1 = cur1.next
+    }
+
+    while (cur2) {
+        len2++
+        cur2 = cur2.next
+    }
+    let max = '1'
+    if (len1 < len2) {
+        max = '2'
+    }
+
+    let diff = Math.abs(len2 - len1)
+    let tmp1 = list1
+    let tmp2 = list2
+    while (len1 && len2) {
+        if (diff) {
+            diff--
+            if (max == '1') {
+                tmp1 = tmp1.next
+                len1 --
+                continue
+            } else {
+                tmp2 = tmp2.next
+                len2 --
+                continue
+            }
+        }
+        if (tmp1.value == tmp2.value) {
+            return tmp1.value
+        } else {
+            tmp1 = tmp1.next
+            tmp2 = tmp2.next
+        }
+        len2 --
+        len1 --
+    }
+}
+```
