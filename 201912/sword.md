@@ -2011,4 +2011,59 @@ function getLastK(arr, num) {
 }
 ```
 
+> 53.1 求0~n-1中缺失的数字。长度n-1, 所有数字都在0~n-1中。
 
+> 按道理来说，索引i必须等于其值。还是二分法。
+
+```javaScript
+function getNum(arr) {
+    let start = 0
+    let end = arr.length - 1
+    while (start < end - 1) {
+        let mid = (start + end) >> 1
+        let base = arr[mid]
+        if (base == mid) {
+            start = mid
+        } else {
+            end = mid
+        }
+    }
+    return start+1
+}
+```
+
+> 53.2 找出单调递增数组中元素与下标相等的值
+
+```javaScript
+function getNum(arr) {
+    let start = 0
+    let end = arr.length - 1
+    while (start < end - 1) {
+        let mid = (start + end) >> 1
+        let base = arr[mid]
+        if (base < mid) {
+            start = mid
+        } else if (base > mid) {
+            end = mid
+        } else {
+            return base
+        }
+    }
+    return -1
+}
+```
+
+> 55. 求二叉树的最大深度
+
+```javaScript
+function getDeep(tree) {
+    let ret = 0
+    if (!tree) {
+        return 0
+    }
+    let left = getDeep(tree.left)
+    let right = getDeep(tree.right)
+    ret = 1 + Math.max(left, right)
+    return ret
+}
+```
