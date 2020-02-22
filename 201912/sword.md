@@ -2091,3 +2091,24 @@ function getDeep(tree) {
     return Math.abs(left - right) > 1 ? -1 : 1 + Math.max(left, right)
 }
 ```
+
+> 57. 递增排序速度中，和为S的两个数。
+
+> 思路：前后两个指针。
+
+```javaScript
+function getNum(arr, s) {
+    let start = 0
+    let end = arr.length - 1
+
+    while (start < end) {
+        if (arr[start] + arr[end] == s) {
+            return [arr[start], arr[end]]
+        } else if(arr[start] + arr[end] > s) {
+            end--
+        } else {
+            start++
+        }
+    }
+}
+```
