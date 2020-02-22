@@ -2067,3 +2067,27 @@ function getDeep(tree) {
     return ret
 }
 ```
+
+> 55.1 判断是一个二叉树是否为平衡二叉树
+
+> 可以求左右深度，然后依次递归下去，但是不是最优答案，因为从上到下，最底层会重复计算。要求每个节点只遍历一次。后续遍历，先先遍历左树，再遍历右树，最后遍历节点。所以在遍历时就存高度。
+
+```javaScript
+function check(tree) {
+    return getDeep(tree) !== -1
+}
+function getDeep(tree) {
+    if (!tree) {
+        return 0
+    }
+    let left = getDeep(tree.left)
+    if (left == -1) {
+        return -1
+    }
+    let right = getDeep(tree.right)
+    if (right == -1) {
+        return -1
+    }
+    return Math.abs(left - right) > 1 ? -1 : 1 + Math.max(left, right)
+}
+```
