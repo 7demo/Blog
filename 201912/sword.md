@@ -2112,3 +2112,34 @@ function getNum(arr, s) {
     }
 }
 ```
+
+> 57.1 和为S的连续整数数列
+
+> 指针初始为1，2.依次进行递增。
+
+```javaScript
+function getNum(s) {
+    let start = 1
+    let end = 2
+    let ret = []
+    let tmp = [start, end]
+    let res = start + end
+    while (start < s && end < s) {
+        if (res < s) {
+            end ++
+            tmp.push(end)
+            res += end
+        } else if (res == s) {
+            ret.push([...tmp])
+            end ++
+            tmp.push(end)
+            res += end
+        } else {
+            let val = tmp.shift()
+            res -= val
+            start++
+        }
+    }
+    return ret
+}
+```
