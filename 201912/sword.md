@@ -2143,3 +2143,43 @@ function getNum(s) {
     return ret
 }
 ```
+
+> 58.翻转字符串
+
+> 思路一：先翻每个字符，然后再把单次反过来。
+
+> 思路二：两个指针分别从头与尾，以空格进行翻转。
+
+```javaScript
+function tran(str) {
+    let start = 0
+    let end = str.length - 1
+    let retH = ''
+    let retL = ''
+    let retHTml = ''
+    let retTmp = ''
+    while (start <= end) {
+        if (str[start] != ' ' && str[end] != ' ') {
+            retHTml += str[start]
+            retTmp = str[end] + retTmp
+            start++
+            end--
+        } else if (str[start] != ' ' && str[end] == ' ') {
+            retHTml += str[start]
+            start++
+        } else if (str[start] == ' ' && str[end] != ' ') {
+            retTmp = str[end] + retTmp
+            end--
+        } else if(str[start] == ' ' && str[end] == ' ') {
+            retH = retHTml + ' ' + retH
+            retL = retL + ' ' + retTmp
+            retTmp = ''
+            retHTml = ''
+            start++
+            end--
+        }
+    }
+
+    return retL + ' ' + retH
+}
+```
