@@ -2183,3 +2183,78 @@ function tran(str) {
     return retL + ' ' + retH
 }
 ```
+
+> 59 队列的最大值.找出所有滑动窗口最大值。
+
+```javaScript
+function getNum(arr, s) {
+    // 窗口
+    let win = []
+    // 暂存最大值
+    let tmp = []
+    // 最大值对应的索引
+    let index = []
+    //最终结果
+    let ret = []
+    let i = 0
+    while (i < arr.length) {
+        // 当小于窗口小于既定值时，最终结果只有一个，且最大
+        if (win.length < s) {
+            win.push(arr[i])
+            if (!tmp.length) {
+                tmp[0] = arr[i]
+                index[0] = i
+            } else {
+                if (tmp[0] < arr[i]) {
+                    tmp[0] = arr[i]
+                    index[0] = i
+                }
+            }
+            ret[0] = tmp[0]
+
+        }else {
+            // 判断最大值是否已超过索引限制，就是已超过窗口
+            if (index[0] + s == i) {
+                index.shift()
+                tmp.shift()
+            }
+            // 如果此时最大值中只有一个，
+            if (tmp.length == 1) {
+                if (tmp[0] < arr[i]) {
+                    tmp = [arr[i]]
+                    index = [i]
+                } else {
+                    tmp.push(arr[i])
+                    index.push(i)
+                }
+            // 最大值有两个，则看新值放入到哪
+            } else {
+                if (tmp[0] < arr[i]) {
+                    tmp = [arr[i]]
+                    index = [i]
+                } else if (tmp[1] < arr[i] && arr[i] < tmp[0]) {
+                    index.pop()
+                    index.push(i)
+                    tmp.pop()
+                    tmp.push(arr[i])
+                } else {
+                    index.push(i)
+                    tmp.push(arr[i])
+                }
+            }
+
+            // 取值
+            ret.push(tmp[0])
+            // 滑动窗口
+            win.shift()
+            win.push(arr[i])
+
+        }
+
+        i++
+    }
+    return ret
+}
+```
+
+
