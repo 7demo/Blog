@@ -2309,7 +2309,7 @@ function getP(n, s) {
 
 > 61.扑克中的顺子。大小王为0，可以变任意牌。
 
-> 思路：1，排序并统计0的个数；2，排序
+> 思路：1，排序并统计0的个数；2，排序。时间复杂度为O(n*s)
 
 ```javaScript
 function check(arr) {
@@ -2333,5 +2333,74 @@ function check(arr) {
         big++
     }
     return gapNum === zNum
+}
+```
+
+> 62.圆圈中最后剩下的数字——约瑟夫环。
+
+```javaScript
+function getVal(arr, s) {
+    // 删除了几次
+    let deleteNum = 0
+    let len = arr.length
+    // 开始位置
+    let start = -1
+    // 用来存是否被删除过
+    let tmp = {}
+
+    while (deleteNum < arr.length) {
+
+        // 递增start要跳过已经删除的值
+        for (let i = 0; i < s; i++) {
+            start++
+            if (tmp[start]) {
+                i--
+            }
+            while (start > len - 1) {
+                start -= len
+            }
+        }
+        // 最终再核对一遍
+        if (tmp[start]) {
+            while (tmp[start]) {
+                if (start + 1 == len) {
+                    start = 0
+                } else {
+                    start++
+                }
+            }
+        } else {
+            tmp[start] = true
+        }
+        deleteNum++
+    }
+
+    return arr[start]
+}
+```
+
+> 数学推导
+
+> 如果f(n, m)代表0~n-1数，删除掉第m剩下的队列。那么第一次删除的索引值为(m-1)%n，设定它等于K。那么数组中的数字就是0，1，。。。k-1,k+1,k+2...n-1，再次删除就是从k+1开始算m个数字。这里抽象下，认定k+1的索引值是0：
+
+|旧队列|新队列|
+|-|-|
+|k+1|0|
+|k+2|1|
+|...|...|
+|0|n-k-1|
+|...|...|
+|k-1|n-2|
+
+那么新队列的索引值对应的值就等于新队列【新队列的索引值加k+1】，就是(f(n-1, m) + k + 1)%n，因为k=(m-1)%n，所以(f(n-1, m) + k + 1)%n=(f(n-1, m) + m)%n:
+
+```javaScript
+function getVal(n, s) {
+    // 如arr只有一个值 则最后一个则必定为0
+    let start = 0
+    for (let i = 2; i <= n; i++) {
+        start = (start + s) % i
+    }
+    return start
 }
 ```
