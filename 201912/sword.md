@@ -2424,3 +2424,30 @@ function getMax(arr) {
     return max
 }
 ```
+
+> 63. 求1+2+3+n，但是不允许使用任何条件判断、循环、乘除法
+
+> 可以用布尔值
+
+```javaScript
+function add(n) {
+    let ret = n
+    !!n && (ret +=add(n-1))
+    return ret
+}
+```
+
+> 64.不用加减乘除做加法
+
+```javaScript
+function sum(m,n) {
+    while (n != 0) {
+        // 得到异或后，相加不进的位
+        let t = m ^ n
+        // &操作表示位都是1，此时相加必定要进位， 左移1位，相当于乘以2
+        n = (m & n) << 1
+        m = t
+    }
+    return m
+}
+```
