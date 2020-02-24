@@ -2257,4 +2257,52 @@ function getNum(arr, s) {
 }
 ```
 
+> 60.n个骰子点数。
 
+> 最小点数之和为n,最大为6n，所有的组合有6^n个。
+
+> 设定n个骰子，点数为s，出现的次数为f(n, s)，也可认为等于f(n-1, s-1)+f(n-1, s-2)...+f(n-1, s-6)
+
+```javaScript
+function getU(n, s) {
+    if (n < 1 || s > 6*n || s < n) {
+        return 0
+    }
+    if (n == 1) {
+        return 1
+    }
+    let ret = 0
+    ret = getU(n - 1, s - 1) + getU(n - 1, s - 2) + getU(n - 1, s - 3) + getU(n - 1, s - 4) + getU(n - 1, s - 5) + getU(n - 1, s - 6)
+    return ret
+}
+
+function getP(n, s) {
+    return getU(n, s) / Math.pow(6, n)
+}
+```
+
+> 思路二：采用数组缓存。
+
+```javaScript
+function getP(n, s) {
+    if (n < 1 || s > 6*n || s < n) {
+        return 0
+    }
+    let sum = 0
+    let count = [
+    ]
+    for (let i = 1; i <= 6; i++) {
+        count[1] = count[1] || []
+        count[1][i] = 1
+    }
+    for (let i = 2; i <= n; i++) {
+        count[i] = count[i] || []
+        // 表示i个骰子的情况下，最大数是6*i,最小数是i，则计算每个的个数
+        for (let j = i; j <= 6 * i; j++ ) {
+            count[i][j] = count[i][j] || 0
+            count[i][j] += add(count[i - 1][j - 1] , count[i - 1][j - 2] , count[i - 1][j - 3] , count[i - 1][j - 4] , count[i - 1][j - 5], count[i - 1][j - 6])
+        }
+    }
+    return count[n][s] / Math.pow(6, n)
+}
+```
