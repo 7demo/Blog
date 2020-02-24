@@ -2306,3 +2306,32 @@ function getP(n, s) {
     return count[n][s] / Math.pow(6, n)
 }
 ```
+
+> 61.扑克中的顺子。大小王为0，可以变任意牌。
+
+> 思路：1，排序并统计0的个数；2，排序
+
+```javaScript
+function check(arr) {
+    let ret = QucikSort(arr)
+    let zNum = 0
+    let small = 0
+    for (let i = 0; i < ret.length; i++) {
+        if (ret[i]==0) {
+            zNum++
+            small = i + 1
+        }
+    }
+    let big = small + 1
+    let gapNum = 0
+    while (big < ret.length) {
+        if (ret[big] == ret[small] && ret[small] !== 0) {
+            return false
+        }
+        gapNum += (ret[big] - ret[small] - 1)
+        small = big
+        big++
+    }
+    return gapNum === zNum
+}
+```
