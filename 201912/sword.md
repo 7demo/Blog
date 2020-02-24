@@ -2404,3 +2404,23 @@ function getVal(n, s) {
     return start
 }
 ```
+
+> 63.股票的最大利润
+
+> 必须先买再卖,遍历到i时，只需要记住已经出现过最小值。用当前值减去最小值，去最大。
+
+```javaScript
+function getMax(arr) {
+    let minbuy = arr[0]
+    let max = arr[1] - minbuy
+    let start = 2
+    while (start < arr.length) {
+        if (arr[start] < minbuy) {
+            minbuy = arr[start]
+        }
+        max = max > arr[start] - minbuy ? max : arr[start] - minbuy
+        start++
+    }
+    return max
+}
+```
