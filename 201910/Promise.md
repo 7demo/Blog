@@ -77,7 +77,7 @@ Prom.prototype.then = function(onFullfilled) {
                 reslove(ret)
             }
         }
-        // 如果最开始的promise状态为pending 
+        // 如果最开始的promise状态为pending
         if (that.state === 'pending') {
             that.deferred.push(handle)
         // 一般使用时都是走此分支
@@ -191,3 +191,5 @@ Prom.trace = function(promes) {
     })
 }
 ```
+
+[参考](https://juejin.im/post/5b2f02cd5188252b937548ab#heading-6)
