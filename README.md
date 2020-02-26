@@ -43,9 +43,8 @@
 + [类型判断](/202002/type.md)
 + [Object.create自实现](/202002/objectcreate.md)
 + [EventEmitter自实现](/202002/EventEmitter.md)
-- [reduce自实现](/201912/gc.md)
-- [flat自实现](/201912/gc.md)
-- [instanceOf自实现](/201912/gc.md)
++ [reduce自实现](/202002/reduce.md)
++ [flat自实现](/202002/flat.md)
 - [js设计模式](/201912/gc.md)
 
 ### nodejs

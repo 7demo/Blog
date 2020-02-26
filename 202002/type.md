@@ -36,3 +36,20 @@ console.log(Object.prototype.toString.call(new Set())) // [object Set]
 console.log(Object.prototype.toString.call(new Map())) // [object Map]
 console.log(Object.prototype.toString.call(/\w/)) // [object Regexp]
 ```
+
+### instanceof的实现
+
+```javaScript
+function instance(obj, cla) {
+    let cur = obj.__proto__
+    while (true) {
+        if (cur === null) {
+            return false
+        }
+        if (cur == cla.prototype) {
+            return true
+        }
+        cur = cur.__proto__
+    }
+}
+```
