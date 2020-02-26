@@ -40,7 +40,7 @@
 + [深拷贝](/202001/clone.md)
 + [连乘函数](/202002/mul.md)
 - [节流与防抖](/202002/shakeAndThrotting.md)
-- [类型判断](/201912/gc.md)
+- [类型判断](/202002/type.md)
 - [Object.create自实现](/201912/gc.md)
 - [EventEmitter自实现](/201912/gc.md)
 - [reduce自实现](/201912/gc.md)
