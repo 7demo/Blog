@@ -36,8 +36,16 @@
 + [Eventloop](/201910/Eventloop.md)
 + [V8垃圾回收](/201912/gc.md)
 + [实现new](/201912/new.md)
-+ [如何实现bind](/201912/gc.md)
++ [如何实现bind](/201912/bind.md)
 + [深拷贝](/202001/clone.md)
+- [连乘函数](/202002/mul.md)
+- [节流与防抖](/201912/gc.md)
+- [类型判断](/201912/gc.md)
+- [Object.create自实现](/201912/gc.md)
+- [EventEmitter自实现](/201912/gc.md)
+- [reduce自实现](/201912/gc.md)
+- [flat自实现](/201912/gc.md)
+- [instanceOf自实现](/201912/gc.md)
 - [js设计模式](/201912/gc.md)
 
 ### nodejs
