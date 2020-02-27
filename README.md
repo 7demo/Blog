@@ -45,6 +45,7 @@
 + [EventEmitter自实现](/202002/EventEmitter.md)
 + [reduce自实现](/202002/reduce.md)
 + [flat自实现](/202002/flat.md)
++ [隐式转换](/202002/transform.md)
 - [js设计模式](/201912/gc.md)
 
 ### nodejs
