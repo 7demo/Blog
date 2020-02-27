@@ -2113,6 +2113,24 @@ function getNum(arr, s) {
 }
 ```
 
+> 当无序数组时，可以用辅助空间
+
+```javaScript
+function getSum2(arr, s) {
+    let obj = {}
+    for (let i = 0; i < arr.length - 1; i++) {
+        obj[s - arr[i]] = true
+    }
+    let ret = 0
+    for (let i = 0; i <  arr.length; i++) {
+        if (obj[arr[i]]) {
+            ret = arr[i]
+        }
+    }
+    return [ret, s - ret]
+}
+```
+
 > 57.1 和为S的连续整数数列
 
 > 指针初始为1，2.依次进行递增。
@@ -2142,6 +2160,51 @@ function getNum(s) {
     }
     return ret
 }
+```
+
+> 57.2 和为S，求3个数，即3-sum。
+
+> 可以遍历数组，每次遍历时，转成求数组求和为s-n[i]的2-sum。最后时间复杂度为O(n*\nlogn) 或者O(n\*n)
+
+```javaScript
+function getSum2(arr, s) {
+    let obj = {}
+    for (let i = 0; i < arr.length - 1; i++) {
+        obj[s - arr[i]] = true
+    }
+    let ret = 0
+    for (let i = 0; i <  arr.length; i++) {
+        if (obj[arr[i]]) {
+            ret = arr[i]
+        }
+    }
+    return [ret, s - ret]
+}
+function getSum3(arr, s) {
+    let ret = []
+    for (let i = 0; i < arr.length - 1; i++) {
+        let _arr = getSum2(arr, s - arr[i])
+        if (_arr[0] + _arr[1] + arr[i] == s && _arr[0] != arr[i] && _arr[1] != arr[i]) {
+            ret = [arr[i], ..._arr]
+            return ret
+        }
+    }
+    return ret
+}
+```
+
+> 57.3 求3-sum close
+
+> 即最接近的三个数。其实可以转为 2-sum close。求2-sum close时，可以存close值进行比较，因为要先排序，所以时间复杂度为O(nlogn)
+
+>57.4 求4-sum
+
+> 思路一：转成x与3-sum,再转2-sum.最终的复杂度为O(n^3)
+
+> 思路二：转成n-sum:
+
+```javaScript
+
 ```
 
 > 58.翻转字符串
