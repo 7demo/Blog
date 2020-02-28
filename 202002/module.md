@@ -180,9 +180,18 @@ export default a
 
 ##### export.default的问题
 
+1，后续维护性变差
 
-### cjs与es6互转
+2，代码不够明了，自动补全
 
+3，不能tree shaking
+
+4，export default在cmj时，要require().default
+
+
+> React为了解决响应问题：module.exports = React.default ? React.default : React
+
+[禁用export default](https://zhuanlan.zhihu.com/p/97335917)
 
 ### import与require
 
