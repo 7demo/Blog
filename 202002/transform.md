@@ -18,9 +18,11 @@
     3, NaN与谁都不相等
 
 
-3，复制数据类型会先转成string，再转number，再运算。
+3，复杂数据类型会先转成string，再转number，再运算。
 
     1，会先调用valueOf获取原始值，再用toString转字符串，再使用Number。
+
+    2，基本类型不会再转，但也只是`null/undefined`.
 
 4, 空数组使用toString会得到空字符串。Boolean在`0, -0, NaN, undefinde, null, '', false, document.all()`外是true。
 
@@ -61,6 +63,18 @@ console.log(1 + null) // 1 + 0 = 1 , false 也表示0
 
 ```javaScript
 [1,2] == '1,2'  // [1,2].valueOf().toString()
+
+null == 0 // false null > 0  null < 0 都是false
+
+null > 0 // false
+
+null >= 0 // true 其相对 null <= 0  则是true
+
+null < 0 // false 其相对 null >= 0  则是true
+
+null <= 0 // true
+
+undefined == 0 // false
 ```
 
 比如现在有一个变量`a`,如何当a等于多个值。
@@ -97,5 +111,17 @@ if (a == 1 && a == 2 && a == 3) {
 {} == {} // false 引用地址
 
 {} == !{} // false [object Obeject] 与false的对比
+
+```
+
+##### 5
+
+```javaScript
+
+[] + {} // [object Object]  '' + {} => '' + {}.toString()
+
+{} + [] // {} 可以理解为代码段，就等于 +[] 强制转为 0
+
+1 + [] // []会调用toString()  1 + '' 转字符串 '1'。 其实
 
 ```
