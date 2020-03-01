@@ -48,6 +48,7 @@
 + [隐式转换](/202002/transform.md)
 + [模块](/202002/module.md)
 + [PWA](/202002/pwa.md)
++ [performance](/202003/performance.md)
 - [js设计模式](/201912/gc.md)
 
 ### nodejs
