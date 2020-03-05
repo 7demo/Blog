@@ -156,7 +156,7 @@ window.define = define
 3，如果没有路径，则首先查该目录下的`node_modules`，接着再查父目录
 
 
-`exports`是`module.exports`的引用，`exports`相当于还是导出的`module.exports`。如果导出单个模块时，不能使用`exports=xx`
+`exports`是`module.exports`的引用，`exports`相当于还是导出的`module.exports`。每个模块最终导出的也是`module.exports`, 如果导出单个模块时，不能使用`exports=xx`
 
 
 ### es6
@@ -208,3 +208,90 @@ export default a
 ### webpack module
 
 见[webpack](/201912/webpack.md)
+
+### 循环引用
+
+有`m1.js`与`m2.js`两个：
+
+```javaScript
+// m1.js
+module.exports.a = 'A'
+let mb = require('./m2')
+console.log(mb)
+module.exports.a = 'AA'
+
+// m2.js
+module.exports.b = 'B'
+let mb = require('./m1')
+console.log(mb)
+module.exports.b = 'BB'
+```
+
+执行`node m1.js`，输出:
+
+```
+{ a: 'A' }
+{ b: 'BB' }
+```
+
+那整个流程:
+
+1，`m1.js`执行到引入m2
+
+2，`m2.js`执行到引入m1，但是m1只执行了一部分，所以引入的就只有执行的一部分
+
+3，`m2`执行完后，回到m1引入m2处继续执行
+
+如果我们调整一下：
+
+```javaScript
+// m1
+let mb = require('./m2')
+console.log(mb)
+module.exports = {
+	a: 'AA'
+}
+// m2
+let mb = require('./m1')
+console.log(mb)
+module.exports = {
+	b: 'BB',
+	func() {
+		console.log(console.log(mb))
+	}
+}
+// main
+var m1 = require('./m1')
+var m2 = require('./m2')
+m2.func()
+```
+
+执行`node main`最后输出：
+
+```
+{}
+{ b: 'BB', func: [Function: func] }
+{}
+undefined
+```
+
+这个地方之所以执行`m2.func()`为`undefined`，是因为m2加载引入m1时，m1导出为`{}`，虽然后续m1加载完导出有`{a:"AA"}`，但是不改变之前的。这里的重点是因为它是`module.exports ={}`导出的，如果用`module.export.a = xx`则会不一样
+
+```
+//m1
+module.exports.a = 'A'
+let mb = require('./m2')
+console.log(mb)
+module.exports.a = 'AA'
+//m2
+module.exports.b = 'B'
+let mb = require('./m1')
+console.log(mb)
+module.exports.b = mb
+//main
+var m1 = require('./m1')
+var m2 = require('./m2')
+console.log(m2.b)
+```
+
+输出为：`{a:'AA'}`
