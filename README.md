@@ -26,13 +26,11 @@
 ---
 
 + [webpack](/201912/webpack.md)
-+ [Source Map](/201912/sourcemap.md)
 
 
 ### Javascript
 ---
 
-+ [枚举](/201711/enmuerable.md)
 + [ArrayBuffer](/201904/arraybuffer.md)
 + [AST，JavaScript](/201908/AST.md)
 + [Promise的自实现](/201910/Promise.md)
@@ -53,7 +51,7 @@
 + [PWA](/202002/pwa.md)
 + [performance](/202003/performance.md)
 + [尾递归](/202003/performance.md)
-- [js设计模式](/201912/gc.md)
++ [js设计模式](/202003/design.md)
 
 ### nodejs
 ---
@@ -65,7 +63,7 @@
 + [child_process](/201904/child_process.md)
 + [cluster](/201905/cluster.md)
 + [进程守护](/201905/demaon.md)
-+ [pm2源码分析](/201905/pm2.md)
+- [pm2源码分析](/201905/pm2.md)
 + [koa-compose解析](/201909/koa-compose.md)
 + [co.js](/202001/co.md)
 + [koa](/201909/koa.md)
@@ -73,7 +71,7 @@
 + [libuv](/201910/libuv.md)
 
 
-### lunix
+### linux
 ---
 
 + [备份与回滚文件](/201711/copyandroll.md)
