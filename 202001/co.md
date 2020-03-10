@@ -162,3 +162,39 @@ f('./nn.html')(function(error, data) {
 ```
 
 当然以上代码存在回调函数多次调用的问题，但是具体场景待发现。
+
+### async实现
+
+> async是gengerator的语法糖。主要区别是内置执行器与返回promise。它的实现也是自执行函数与generator包再一个函数中。
+
+```javaScript
+async fn(args){}
+
+// 等同
+
+function fn(args) {
+  return spawn(function* () {
+    // xx
+  })
+}
+
+function spawn(gen) {
+  return new Promise((resolve, reject) => {
+    let g = gen()
+    function step(value) {
+      let next = value()
+      if (next.done) {
+        return reslove(next.value)
+      }
+      Promise.reslove(next.value).then((data) => {
+        step(function() {
+          return g.next(data)
+        })
+      })
+    }
+    step(function() {
+      return g.next()
+    })
+  })
+}
+```
