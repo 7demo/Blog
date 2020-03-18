@@ -104,7 +104,7 @@
 
 + [两数之和/Two Sum](/201904/twoSum.md)
 + [三数之后/Three Sum](/202003/threeSum.md)
-+ [add Two Numbers](/201904/addTwoNumbers.md)
++ [两数相加/add Two Numbers](/201904/addTwoNumbers.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)

@@ -92,3 +92,59 @@ var addTwoNumbers = function(l1, l2) {
     return l3.next
 };
 ```
+
+```javaScript
+function ListNode(val) {
+		    this.val = val;
+		    this.next = null;
+		}
+
+		var addTwoNumbers = function(l1, l2) {
+			let m1 = ''
+			let m2 = ''
+			while (l1) {
+				m1 = (l1.val + '') + m1
+				l1 = l1.next
+			}
+			while (l2) {
+				m2 = (l2.val + '') + m2
+				l2 = l2.next
+			}
+			let len1 = m1.length - 1
+			let len2 = m2.length - 1
+			let res = ''
+			let mus = 0
+			while (len1 > -1 || len2 > -1) {
+				let s1 = m1[len1]/1 || 0
+				let s2 = m2[len2]/1 || 0
+				let ms = s1 + s2 + mus
+				if (ms > 9) {
+					mus = 1
+					ms = ms%10
+				} else {
+					mus = 0
+				}
+				res = (ms + '') + res
+				len1--
+				len2--
+			}
+			if (mus) {
+				res = (mus + '') + res
+			}
+			let len = res.length - 1
+			let ret
+			let cur
+			while (len > -1) {
+				let nnode = new ListNode(res[len])
+				if (ret) {
+					cur.next = nnode
+					cur = nnode
+				} else {
+					ret = nnode
+					cur = nnode
+				}
+				len--
+			}
+			return ret
+		}
+```
