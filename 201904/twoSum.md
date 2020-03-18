@@ -10,7 +10,6 @@
 		let len = nums.length
 		for (i = 0; i < len; i++) {
 			j = obj[target - nums[i]]
-			console.log(i, target-nums[i])
 			if (typeof j !== 'undefined') {
 				return [j, i]
 			}
@@ -19,26 +18,24 @@
 	}
 ```
 
-以上是`leetcode`能接受的答案，以空间换时间。如果只单纯实现其实还有：
+是`leetcode`能接受的答案，额外使用了一个`O(N)`的空间。如果不让使用额外空间也可以：
 
-```javascript
-var twoSum = function(nums, target) {
-    let run = (nums, target) => {
-        var res = nums.reduce((cur, next) => {
-            if (cur + next === target) {
-                return [cur, next]
-            } else {
-                return cur
-            }
-        })
-        if (!Array.isArray(res)) {
-           return run(nums.slice(1), target)
-        } else {
-           return res
+```javaScript
+function twoSum(nums, target) {
+    let start = 0
+    let end = nums.length - 1
+    while (start < end) {
+        let res = nums[start] + nums[end]
+        if (res == target) {
+            return [start, end]
+        } else if (res > target) {
+            end --
+        } else if (res < target) {
+            start ++
         }
     }
-    const valurArr = run(nums, target)
-    return [nums.indexOf(valurArr[0]), nums.indexOf(valurArr[1])]
-};
+    return []
+}
 ```
-以上，虽然已经为了避免堆栈过长，使用了“尾递归”来优化，但是还是没有被通过。
+
+这个方法也是`O(N)`，不过当数组时一个倒序数组或者数组满足的值没有分布在前后两端就会出问题。

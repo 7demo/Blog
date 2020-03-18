@@ -17,7 +17,6 @@
 + [vue之nexttick与异步渲染](/201911/vue-nexttick.md)
 + [vue之component](/201911/component.md)
 + [vue之plugin](/201911/plugin.md)
-+ [vue插件](/201911/plugin.md)
 + [vuex](/201911/vuex.md)
 + [vue-router](/201912/vue-router.md)
 + [vue3之proxy](/201912/proxy.md)
@@ -103,7 +102,7 @@
 ### leetcode
 ---
 
-+ [Two Sum](/201904/twoSum.md)
++ [两数之后/Two Sum](/201904/twoSum.md)
 + [add Two Numbers](/201904/addTwoNumbers.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)

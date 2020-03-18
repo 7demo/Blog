@@ -2,7 +2,7 @@
 
 > 是计数排序的升级版本。把输入数据分到有限数量的桶里，每个桶再进行排序。计数排序是统计每个数的出现次数，而桶则是一个区间。时间复杂度为O(N*M)
 
-```
+```JavaScript
 function BicketSort(arr, bucketSize) {
     // 如果数组长度少于2 直接返回
     if (arr.length < 2) {
