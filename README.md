@@ -16,6 +16,7 @@
 + [virtual-dom](/201911/virtual-dom.md)
 + [vue之nexttick与异步渲染](/201911/vue-nexttick.md)
 + [vue之component](/201911/component.md)
++ [vue之directive](/201911/directive.md)
 + [vue之plugin](/201911/plugin.md)
 + [vuex](/201911/vuex.md)
 + [vue-router](/201912/vue-router.md)
@@ -24,6 +25,7 @@
 ### webpack
 ---
 
++ [tapable](/201912/tapable.md)
 + [webpack](/201912/webpack.md)
 
 
@@ -49,7 +51,7 @@
 + [模块](/202002/module.md)
 + [PWA](/202002/pwa.md)
 + [performance](/202003/performance.md)
-+ [尾递归](/202003/performance.md)
++ [尾递归](/202003/trilre.md)
 + [js设计模式](/202003/design.md)
 
 ### nodejs
