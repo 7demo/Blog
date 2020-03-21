@@ -52,6 +52,7 @@
 + [PWA](/202002/pwa.md)
 + [performance](/202003/performance.md)
 + [尾递归](/202003/trilre.md)
++ [Duff`s Device](/202003/duff.md)
 + [js设计模式](/202003/design.md)
 
 ### nodejs

@@ -120,7 +120,7 @@ setTimeout(() => {
 
 + 执行当前微任务队列中的任务，输出`11`。同时注册微任务`Promise(12)`。由于微任务没有空，所以继续执行微任务，输出`12`。
 
-说明在浏览器中，宏任务与微任务是严格间隔执行的，执行完一个宏任务会立马执行微任务队列，直到微任务队列为空。再执行下一个宏任务。
+说明在浏览器中，宏任务与微任务是严格间隔执行的，执行完完宏任务队列会立马执行微任务队列，直到微任务队列为空。再执行下一个宏任务。
 
 在`node`中：
 
@@ -188,5 +188,57 @@ fs.readFile('./nn.html', () => {
 
 从性能上来说，如果要做到异步执行，`setImmediate`比`setTimeout`要好的多。
 
+最后需要注意的是遇到`await`是一个promise的语法糖.
 
+```javaScript
+function f() {
+    await p()
+    s()
+}
+// 等价于
+function f() {
+    resolve(p()).then(s())
+}
+```
 
+```javaScript
+console.log('script start')
+
+async function async1() {
+    await async2()
+    console.log('async1 end')
+}
+async function async2() {
+    console.log('async2 end')
+}
+async1()
+
+setTimeout(function() {
+    console.log('setTimeout')
+}, 0)
+
+new Promise(resolve => {
+    console.log('Promise')
+    resolve()
+})
+    .then(function() {
+    console.log('promise1')
+    })
+    .then(function() {
+    console.log('promise2')
+    })
+
+console.log('script end')
+
+// 输出script start
+// 执行async1，
+// 在async1 中执行async2，输出async2 end, 把async1 end放到微任务中
+// settimeout放入延迟队列
+// 输出promise，把primse1放入微任务
+// 输出scrtip end
+// 开始检查微任务，出书async1 end, primise1,放入promise2到微任务
+// 输出promise2
+// 输出setout
+```
+
+[一次弄懂Event Loop](https://zhuanlan.zhihu.com/p/55511602)
