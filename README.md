@@ -115,6 +115,7 @@
 + [有效的括号/isValid](/202003/isValid.md)
 + [合并空间/merge](/202003/merge.md)
 + [全排列/permute](/202003/permute.md)
++ [复原ip/restoreIpAddresses](/202003/restoreIpAddresses.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
