@@ -56,3 +56,23 @@ function TopK(arr, k) {
 	return undefined
 }
 ```
+
+其中切割函数：
+
+```javaScript
+function quickSort(nums,left,right){
+	var pivot = nums[right];
+	while(left<right){
+		while(left<right && nums[left]>=pivot){
+			left++;
+		}
+		nums[right]=nums[left];
+		while(left<right && nums[right]<pivot){
+			right--;
+		}
+		nums[left]=nums[right];
+	}
+	nums[right]=pivot;
+	return left;
+}
+```
