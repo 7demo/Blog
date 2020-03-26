@@ -118,6 +118,7 @@
 + [复原ip/restoreIpAddresses](/202003/restoreIpAddresses.md)
 + [下一个排列/nextPermutation](/202003/nextPermutation.md)
 + [二叉树的右视图/rightSideView](/202003/rightSideView.md)
++ [岛屿数量/numIslands](/202003/numIslands.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
