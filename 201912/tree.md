@@ -149,3 +149,145 @@ function tf(tree) {
     }
 }
 ```
+
+#### 迭代遍历
+
+```javaScript
+// 中序遍历
+var inorderTraversal = function(root) {
+    if (!root) {
+        return []
+    }
+    let ret = []
+    let q = []
+    while (root || q.length) {
+        console.log(root, q)
+        while (root) {
+            q.push(root)
+            root = root.left
+        }
+        if (q.length) {
+            let node = q.pop()
+            ret.push(node.val)
+            root = node.right
+        }
+    }
+    return ret
+};
+```
+
+#### 遍历
+
+```javaScript
+// 递归
+let pre = function(tree) {
+    if (!tree) {
+        return []
+    }
+    let ret = []
+    ret.push(tree.val)
+    if (tree.left){
+        ret.push(...pre(tree.left))
+    }
+    if (tree.right){
+        ret.push(...pre(tree.right))
+    }
+    return ret
+}
+// 迭代
+let pre1 = function(tree) {
+    if (!tree) {
+        return []
+    }
+    let ret = []
+    let q = []
+    while (tree || q.length) {
+        while (tree) {
+            ret.push(tree.val)
+            if (tree.right){
+                q.push(tree.right)
+            }
+            tree = tree.left
+        }
+        if (q.length) {
+            tree = q.pop()
+        }
+    }
+    return ret
+}
+// 递归
+let mid = function(tree) {
+    if (!tree) {
+        return []
+    }
+    let ret = []
+    if (tree.left){
+        ret.push(...mid(tree.left))
+    }
+    ret.push(tree.val)
+    if (tree.right){
+        ret.push(...mid(tree.right))
+    }
+    return ret
+}
+// 迭代
+let mid1 = function(tree) {
+    if (!tree) {
+        return []
+    }
+    let ret = []
+    let q = []
+    while (tree || q.length) {
+        while (tree) {
+            q.push(tree)
+            tree = tree.left
+        }
+        if (q.length) {
+            tree = q.pop()
+            ret.push(tree.val)
+            tree = tree.right
+        }
+    }
+    return ret
+}
+// 递归
+let tail = function(tree) {
+    if (!tree) {
+        return []
+    }
+    let ret = []
+    if (tree.left){
+        ret.unshift(...tail(tree.left))
+    }
+    if (tree.right){
+        ret.push(...tail(tree.right))
+    }
+    ret.push(tree.val)
+    return ret
+}
+// 迭代
+let tail1 = function(tree) {
+    if (!tree) {
+        return []
+    }
+    let ret = []
+    let lq = []
+    let rq = []
+    lq.push(tree)
+    while (lq.length) {
+        let cur = lq.pop()
+        rq.push(cur)
+        if (cur.left) {
+            lq.push(cur.left)
+        }
+        if (cur.right) {
+            lq.push(cur.right)
+        }
+    }
+    while (rq.length) {
+        let rc = rq.pop()
+        ret.push(rc.val)
+    }
+    return ret
+}
+```
