@@ -122,6 +122,7 @@
 + [岛屿数量/numIslands](/202003/numIslands.md)
 + [相交链表/getIntersectionNode](/202003/getIntersectionNode.md)
 + [括号生成/generateParenthesis](/202003/generateParenthesis.md)
++ [重排链表/reorderList](/202004/reorderList.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
