@@ -125,6 +125,7 @@
 + [重排链表/reorderList](/202004/reorderList.md)
 + [岛屿的最大面积/maxAreaOfIsland](/202004/maxAreaOfIsland.md)
 + [打家劫舍/rob](/202004/rob.md)
++ [二叉树的直径/diameterOfBinaryTree](/202004/diameterOfBinaryTree.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
