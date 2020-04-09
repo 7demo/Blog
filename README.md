@@ -128,6 +128,8 @@
 + [二叉树的直径/diameterOfBinaryTree](/202004/diameterOfBinaryTree.md)
 + [链表排序/sortList](/202004/sortList.md)
 + [链表相加/addTwoNumbers](/202004/addTwoNumbers.md)
++ [最长上升子序列/lengthOfLIS](/202004/lengthOfLIS.md)
++ [翻转链表/reverseList](/202004/reverseList.md)
 + [lengthOfLongestSubstring](/201904/lengthOfLongestSubstring.md)
 + [Jump Game](/201905/JumpGame.md)
 + [Jump Game 2](/201905/JumpGame2.md)
