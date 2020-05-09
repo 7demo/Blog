@@ -1,14 +1,5 @@
 # 学习笔记
 
-### 计算机基础
-
-+ [HTTP2](/202002/HTTP2.md)
-+ [位运算](/202002/10.md)
-+ [git](/202003/git.md)
-+ [web安全](/202003/safe.md)
-+ [正则表达式](/202003/regexp.md)
-
-
 ### vue
 ---
 
@@ -20,7 +11,6 @@
 + [vue之plugin](/201911/plugin.md)
 + [vuex](/201911/vuex.md)
 + [vue-router](/201912/vue-router.md)
-+ [vue3之proxy](/201912/proxy.md)
 
 ### webpack
 ---
@@ -33,27 +23,11 @@
 ---
 
 + [ArrayBuffer](/201904/arraybuffer.md)
-+ [AST，JavaScript](/201908/AST.md)
 + [Promise的自实现](/201910/Promise.md)
 + [Eventloop](/201910/Eventloop.md)
-+ [V8垃圾回收](/201912/gc.md)
-+ [实现new](/201912/new.md)
-+ [如何实现bind](/201912/bind.md)
-+ [深拷贝](/202001/clone.md)
-+ [连乘函数](/202002/mul.md)
-+ [节流与防抖](/202002/shakeAndThrotting.md)
-+ [类型判断](/202002/type.md)
-+ [Object.create自实现](/202002/objectcreate.md)
-+ [EventEmitter自实现](/202002/EventEmitter.md)
-+ [reduce自实现](/202002/reduce.md)
-+ [flat自实现](/202002/flat.md)
 + [隐式转换](/202002/transform.md)
 + [模块](/202002/module.md)
-+ [PWA](/202002/pwa.md)
-+ [performance](/202003/performance.md)
-+ [尾递归](/202003/trilre.md)
 + [Duff`s Device](/202003/duff.md)
-+ [js设计模式](/202003/design.md)
 
 ### nodejs
 ---
@@ -63,25 +37,15 @@
 + [文件上传下载的转发实现](/201904/uploadAndDownload.md)
 + [Buffer](/201904/buffer.md)
 + [child_process](/201904/child_process.md)
-+ [cluster](/201905/cluster.md)
-+ [进程守护](/201905/demaon.md)
-- [pm2源码分析](/201905/pm2.md)
 + [koa-compose解析](/201909/koa-compose.md)
 + [co.js](/202001/co.md)
 + [koa](/201909/koa.md)
 + [koa-router](/201909/koa-router.md)
-+ [libuv](/201910/libuv.md)
 
+### 计算机基础
 
-### linux
----
-
-+ [备份与回滚文件](/201711/copyandroll.md)
-+ [监控进程重启与杀死](/201904/monitor.md)
-
-### redis
-
-+ [redis](/201912/redis.md)
++ [位运算](/202002/10.md)
++ [正则表达式](/202003/regexp.md)
 
 ### 算法
 
@@ -146,14 +110,12 @@
 ### 读书笔记
 ---
 
-+ [图解算法](/201904/Graphicalalgorithm.md)
 + [nodejs调试指南](/201905/debugnodejs.md)
-+ [http权威指南](/201911/http.md)
 + [计算机网络](/202001/computer.md)
 + [剑指](/201912/sword.md)
 
 --- todo ---
 
-- rollup
+- react
 
 
