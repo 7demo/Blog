@@ -37,6 +37,9 @@
 + [模块](/202002/module.md)
 + [Duff`s Device](/202003/duff.md)
 
+### Typescript
++ [interface](/202006/interface.md)
+
 ### nodejs
 ---
 
